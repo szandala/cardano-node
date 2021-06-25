@@ -551,7 +551,7 @@ pTransaction :: Parser TransactionCmd
 pTransaction =
   asum
     [ subParser "build-raw"
-        (Opt.info pTransactionBuild $ Opt.progDesc "Build a transaction (low-level, inconvenient)")
+        ((Opt.info pTransactionBuild $ Opt.progDesc "Build a transaction (low-level, inconvenient)") {Opt.infoFullDesc = False})
     , subParser "sign"
         (Opt.info pTransactionSign $ Opt.progDesc "Sign a transaction")
     , subParser "witness"
