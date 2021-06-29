@@ -2,8 +2,17 @@
 
 To retire a pool we need to:
 
-* Create a **deregistration certificate** and
-* Submit the certificate to the blockchain with a **transaction**
+1. Create a **deregistration certificate**
+2. Submit the certificate to the blockchain with a **transaction**
+3. Keep your system working normally until we reach the epoch you chose on the certificate for the pool to expire.
+4. When the pool is effectively retired, the pool deposit is send back to the rewards account.
+5. Wait for any pending rewards to be paid.
+6. Withdraw any rewards and pool deposit from the rewards account.
+7. De-register your stake key.
+9. Move your funds out from your pledge address to a different wallet.  
+
+**IMPORTANT:**
+**Do NOT deregister your stake key before the pool deposit is paid back to your rewards account or your pool deposit will have no place to go and will be sent to the treasury.**
 
 The deregistration certificate contains the _epoch_ in which we want to retire the pool. This epoch must be _after_ the current epoch and _not later than_ `eMax` epochs in the future, where `eMax` is a protocol parameter.
 
