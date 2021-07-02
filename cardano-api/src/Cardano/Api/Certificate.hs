@@ -350,7 +350,7 @@ toShelleyPoolParams StakePoolParameters {
     , Shelley._poolVrf    = vrfkh
     , Shelley._poolPledge = toShelleyLovelace stakePoolPledge
     , Shelley._poolCost   = toShelleyLovelace stakePoolCost
-    , Shelley._poolMargin = Shelley.unitIntervalFromRational stakePoolMargin
+    , Shelley._poolMargin = fromMaybe (error "bad stake pool margin") . Shelley.boundRational $ stakePoolMargin
     , Shelley._poolRAcnt  = toShelleyStakeAddr stakePoolRewardAccount
     , Shelley._poolOwners = Set.fromList
                               [ kh | StakeKeyHash kh <- stakePoolOwners ]
@@ -414,7 +414,7 @@ fromShelleyPoolParams
       stakePoolId            = StakePoolKeyHash _poolId
     , stakePoolVRF           = VrfKeyHash _poolVrf
     , stakePoolCost          = fromShelleyLovelace _poolCost
-    , stakePoolMargin        = Shelley.unitIntervalToRational _poolMargin
+    , stakePoolMargin        = Shelley.unboundRational _poolMargin
     , stakePoolRewardAccount = fromShelleyStakeAddr _poolRAcnt
     , stakePoolPledge        = fromShelleyLovelace _poolPledge
     , stakePoolOwners        = map StakeKeyHash (Set.toList _poolOwners)

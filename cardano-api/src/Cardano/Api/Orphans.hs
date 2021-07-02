@@ -22,6 +22,7 @@ import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 import qualified Data.Map.Strict as Map
+import           Data.Maybe (fromMaybe)
 import           Data.Aeson (FromJSON (..), ToJSON (..), object, (.=), (.!=), (.:), (.:?))
 import qualified Data.Aeson as Aeson
 import           Data.Aeson.Types (FromJSONKey (..), ToJSONKey (..), toJSONKeyText)
@@ -31,7 +32,7 @@ import           Data.Scientific (Scientific)
 import           Control.Applicative
 import           Control.Iterate.SetAlgebra (BiMap (..), Bimap)
 
-import           Cardano.Ledger.BaseTypes (StrictMaybe (..), strictMaybeToMaybe)
+import           Cardano.Ledger.BaseTypes (BoundedRational (..), StrictMaybe (..), strictMaybeToMaybe)
 import           Cardano.Ledger.Crypto (StandardCrypto)
 import           Cardano.Slotting.Slot (SlotNo (..))
 
@@ -145,7 +146,7 @@ instance ToJSON (PParamsUpdate era) where
      ++ [ "poolDeposit"           .= x | x <- mbfield (Shelley._poolDeposit pp) ]
      ++ [ "eMax"                  .= x | x <- mbfield (Shelley._eMax pp) ]
      ++ [ "nOpt"                  .= x | x <- mbfield (Shelley._nOpt pp) ]
-     ++ [ "a0" .= (fromRational x :: Scientific)
+     ++ [ "a0" .= ((fromRational . unboundRational) x :: Scientific)
                                        | x <- mbfield (Shelley._a0 pp) ]
      ++ [ "rho"                   .= x | x <- mbfield (Shelley._rho pp) ]
      ++ [ "tau"                   .= x | x <- mbfield (Shelley._tau pp) ]
@@ -392,7 +393,7 @@ instance ToJSON (Alonzo.PParams era) where
       , "poolDeposit" .= Alonzo._poolDeposit pp
       , "eMax" .= Alonzo._eMax pp
       , "nOpt" .= Alonzo._nOpt pp
-      , "a0" .= (fromRational (Alonzo._a0 pp) :: Scientific)
+      , "a0" .= ((fromRational . unboundRational) (Alonzo._a0 pp) :: Scientific)
       , "rho" .= Alonzo._rho pp
       , "tau" .= Alonzo._tau pp
       , "decentralisationParam" .= Alonzo._d pp
@@ -422,7 +423,7 @@ instance FromJSON (Alonzo.PParams era) where
         <*> obj .: "poolDeposit"
         <*> obj .: "eMax"
         <*> obj .: "nOpt"
-        <*> ( (toRational :: Scientific -> Rational)
+        <*> ( (fromMaybe (error "bad value of a0") . boundRational . (toRational :: Scientific -> Rational))
                 <$> obj .: "a0"
             )
         <*> obj .: "rho"

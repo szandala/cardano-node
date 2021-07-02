@@ -636,7 +636,7 @@ buildPool nw dir index = do
       , Ledger._poolVrf    = Ledger.hashVerKeyVRF poolVrfVK
       , Ledger._poolPledge = Ledger.Coin 0
       , Ledger._poolCost   = Ledger.Coin 0
-      , Ledger._poolMargin = Ledger.truncateUnitInterval 0
+      , Ledger._poolMargin = minBound
       , Ledger._poolRAcnt  =
           toShelleyStakeAddr $ makeStakeAddress nw $ StakeCredentialByKey (verificationKeyHash rewardsSVK)
       , Ledger._poolOwners = mempty

@@ -22,7 +22,7 @@ import           Ouroboros.Consensus.Util.Time
 import           Cardano.Ledger.Address (Addr (..))
 import           Cardano.Ledger.Credential (Credential (..), PaymentCredential,
                    StakeCredential, StakeReference (..))
-import           Cardano.Ledger.BaseTypes (Network (..), truncateUnitInterval)
+import           Cardano.Ledger.BaseTypes (BoundedRational (..), Network (..))
 import           Cardano.Ledger.Coin (Coin (..))
 import           Cardano.Ledger.Keys (GenDelegPair (..), Hash, KeyHash (..), KeyRole (..),
                    VerKeyVRF)
@@ -43,7 +43,7 @@ exampleShelleyGenesis =
     , sgUpdateQuorum = 16991
     , sgMaxLovelaceSupply = 71
     , sgProtocolParams = emptyPParams
-        { _d = truncateUnitInterval (fromRational 1.9e-2)
+        { _d = error "rational out of bounds" $ boundRational (fromRational 1.9e-2)
         , _maxBBSize = 239857
         , _maxBHSize = 217569
         }

@@ -319,8 +319,15 @@ instance ToObject (AlonzoPredFail (Alonzo.AlonzoEra StandardCrypto)) where
              , "witnesses" .= Set.toList missingKeyWitnesses
              ]
   toObject _ (UnspendableUTxONoDatumHash txins) =
-    mkObject [ "kind" .= String "MissingRequiredSigners"
+    mkObject [ "kind" .= String "UnspendableUTxONoDatumHash"
              , "txins" .= Set.toList txins
+             ]
+  toObject _ (NonOutputSupplimentaryDatums unallowed acceptable) =
+    mkObject [ "kind" .= String "NonOutputSupplimentaryDatums"
+             , "unallowed" .= map (Crypto.hashToTextAsHex . SafeHash.extractHash)
+                                  (Set.toList unallowed)
+             , "acceptable" .= map (Crypto.hashToTextAsHex . SafeHash.extractHash)
+                                   (Set.toList acceptable)
              ]
 
 renderWitnessPPDataHash :: Maybe (Alonzo.WitnessPPDataHash StandardCrypto) -> Aeson.Value
@@ -650,6 +657,12 @@ instance ToObject (PoolPredicateFailure era) where
              , "certificateCost" .= String (textShow certCost)
              , "protocolParCost" .= String (textShow protCost)
              , "error" .= String "The stake pool cost is too low"
+             ]
+  toObject _verb (PoolMedataHashTooBig poolId s) =
+    mkObject [ "kind" .= String "PoolMedataHashTooBig"
+             , "poolId" .= String (textShow poolId)
+             , "metadataHashSize" .= String (textShow s)
+             , "error" .= String "The stake pool metadata hash is too big"
              ]
 
 -- Apparently this should never happen according to the Shelley exec spec
