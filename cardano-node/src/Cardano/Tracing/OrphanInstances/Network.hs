@@ -27,12 +27,14 @@ import           Cardano.Tracing.ConvertTxId (ConvertTxId)
 import           Cardano.Tracing.OrphanInstances.Common
 import           Cardano.Tracing.Render
 
-import           Ouroboros.Consensus.Block (ConvertRawHash (..), getHeader)
-import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTx, HasTxs (..), txForgetValidated,
-                   txId)
+import           Ouroboros.Consensus.Block (ConvertRawHash (..), Header, getHeader)
+import           Ouroboros.Consensus.Ledger.Query (BlockQuery, Query)
+import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, GenTx, GenTxId,
+                   HasTxs (..), TxId, txForgetValidated, txId)
 import           Ouroboros.Consensus.Node.Run (RunNode, estimateBlockSize)
-import qualified Ouroboros.Network.AnchoredFragment as AF
-import qualified Ouroboros.Network.AnchoredSeq as AS
+
+--import qualified Ouroboros.Network.AnchoredFragment as AF
+--import qualified Ouroboros.Network.AnchoredSeq as AS
 import           Ouroboros.Network.Block
 import           Ouroboros.Network.BlockFetch.ClientState (TraceFetchClientState,
                    TraceLabelPeer (..))
@@ -336,27 +338,97 @@ instance HasTextFormatter NtN.AcceptConnectionsPolicyTrace where
   formatText a _ = pack (show a)
 
 
-instance (StandardHash header, Show peer, ToObject peer)
+instance (StandardHash header, Show peer)
       => Transformable Text IO [TraceLabelPeer peer (FetchDecision [Point header])] where
   trTransformer = trStructuredText
 instance (StandardHash header, Show peer)
       => HasTextFormatter [TraceLabelPeer peer (FetchDecision [Point header])] where
   formatText a _ = pack (show a)
 
-
-instance ( Show peer, ToObject peer, Show a, HasPrivacyAnnotation a
-         , HasSeverityAnnotation a, ToObject a)
-      => Transformable Text IO (TraceLabelPeer peer a) where
+instance (HasHeader header, Show peer, Show header, ConvertRawHash header)
+     => Transformable Text IO (TraceLabelPeer peer (TraceFetchClientState header)) where
   trTransformer = trStructuredText
-instance (Show peer, Show a)
-      => HasTextFormatter (TraceLabelPeer peer a) where
+instance (Show header, StandardHash header, Show peer)
+     => HasTextFormatter (TraceLabelPeer peer (TraceFetchClientState header)) where
   formatText a _ = pack (show a)
+
+instance (Show peer, StandardHash blk, Show (Header blk))
+     => Transformable Text IO (TraceLabelPeer peer (NtN.TraceSendRecv (ChainSync (Header blk) (Point blk) (Tip blk)))) where
+  trTransformer = trStructuredText
+instance (Show peer, StandardHash blk, Show (Header blk))
+     => HasTextFormatter (TraceLabelPeer peer (NtN.TraceSendRecv (ChainSync (Header blk) (Point blk) (Tip blk)))) where
+  formatText a _ = pack (show a)
+
+instance (Show blk, ConvertTxId blk, RunNode blk, HasTxs blk, Show peer, StandardHash blk)
+     => Transformable Text IO (TraceLabelPeer peer (NtN.TraceSendRecv (BlockFetch blk (Point blk)))) where
+  trTransformer = trStructuredText
+instance (Show blk, Show peer, StandardHash blk)
+     => HasTextFormatter (TraceLabelPeer peer (NtN.TraceSendRecv (BlockFetch blk (Point blk)))) where
+  formatText a _ = pack (show a)
+
+instance (Show peer, Show (TxId (GenTx blk)), Show (GenTx blk))
+     => Transformable Text IO (TraceLabelPeer peer (NtN.TraceSendRecv (TxSubmission (GenTxId blk) (GenTx blk)))) where
+    trTransformer = trStructuredText
+instance   (Show peer, Show (TxId (GenTx blk)), Show (GenTx blk))
+    => HasTextFormatter (TraceLabelPeer peer (NtN.TraceSendRecv (TxSubmission (GenTxId blk) (GenTx blk)))) where
+  formatText a _ = pack $ show a
+
+instance (Show peer, Show (TxId (GenTx blk)), Show (GenTx blk))
+    => Transformable Text IO (TraceLabelPeer peer (NtN.TraceSendRecv (TxSubmission2 (GenTxId blk) (GenTx blk)))) where
+  trTransformer = trStructuredText
+instance (Show peer, Show (TxId (GenTx blk)), Show (GenTx blk))
+    => HasTextFormatter (TraceLabelPeer peer (NtN.TraceSendRecv (TxSubmission2 (GenTxId blk) (GenTx blk)))) where
+  formatText a _ = pack $ show a
+
+instance (Show localPeer, StandardHash blk)
+    => Transformable Text IO (TraceLabelPeer localPeer (NtN.TraceSendRecv (ChainSync (Serialised blk) (Point blk) (Tip blk)))) where
+  trTransformer = trStructuredText
+instance (Show localPeer, StandardHash blk) => HasTextFormatter (TraceLabelPeer localPeer (NtN.TraceSendRecv (ChainSync (Serialised blk) (Point blk) (Tip blk)))) where
+  formatText a _ = pack $ show a
+
+
+--instance ( Show peer, Show a, HasPrivacyAnnotation a
+--         , HasSeverityAnnotation a, ToObject a)
+--      => Transformable Text IO (TraceLabelPeer peer a) where
+--  trTransformer = trStructuredText
+--instance (Show peer, Show a)
+--      => HasTextFormatter (TraceLabelPeer peer a) where
+--  formatText a _ = pack (show a)
 
 
 instance Transformable Text IO (TraceTxSubmissionInbound txid tx) where
   trTransformer = trStructuredText
 instance HasTextFormatter (TraceTxSubmissionInbound txid tx) where
   formatText a _ = pack (show a)
+
+
+instance Show peer => Transformable Text IO (TraceLabelPeer peer (TraceTxSubmissionInbound (GenTxId blk) (GenTx blk))) where
+  trTransformer = trStructuredText
+instance Show peer => HasTextFormatter (TraceLabelPeer peer (TraceTxSubmissionInbound (GenTxId blk) (GenTx blk))) where
+  formatText a _ = pack (show a)
+
+instance (Show peer, Show (TxId (GenTx blk)), Show (GenTx blk))
+    => Transformable Text IO (TraceLabelPeer peer (TraceTxSubmissionOutbound (GenTxId blk) (GenTx blk))) where
+  trTransformer = trStructuredText
+instance (Show peer, Show (TxId (GenTx blk)), Show (GenTx blk))
+    => HasTextFormatter (TraceLabelPeer peer (TraceTxSubmissionOutbound (GenTxId blk) (GenTx blk))) where
+  formatText a _ = pack $ show a
+
+instance ((applyTxErr ~ ApplyTxErr blk), Show localPeer, Show applyTxErr, Show (GenTx blk))
+  => Transformable Text IO (TraceLabelPeer localPeer (NtN.TraceSendRecv (LocalTxSubmission (GenTx blk) applyTxErr))) where
+  trTransformer = trStructuredText
+instance ((applyTxErr ~ ApplyTxErr blk), Show localPeer, Show applyTxErr, Show (GenTx blk))
+  => HasTextFormatter (TraceLabelPeer localPeer (NtN.TraceSendRecv (LocalTxSubmission (GenTx blk) applyTxErr))) where
+  formatText a _ = pack $ show a
+
+
+instance (LocalStateQuery.ShowQuery (Query blk), StandardHash blk, LocalStateQuery.ShowQuery (BlockQuery blk), Show localPeer)
+    => Transformable  Text IO (TraceLabelPeer localPeer (NtN.TraceSendRecv (LocalStateQuery blk (Point blk) (Query blk)))) where
+  trTransformer = trStructuredText
+instance (LocalStateQuery.ShowQuery (BlockQuery blk), Show localPeer, StandardHash blk)
+    => HasTextFormatter (TraceLabelPeer localPeer (TraceSendRecv (LocalStateQuery blk (Point blk) (Query blk)))) where
+  formatText a _ = pack $ show a
+
 
 
 instance (Show tx, Show txid)
@@ -558,7 +630,7 @@ instance (Show txid, Show tx)
       , "agency" .= String (pack $ show stok)
       , "txs" .= String (pack $ show txs)
       ]
-  toObject _verb (AnyMessageAndAgency stok (MsgRequestTxIds _ _ _)) =
+  toObject _verb (AnyMessageAndAgency stok MsgRequestTxIds{}) =
     mkObject
       [ "kind" .= String "MsgRequestTxIds"
       , "agency" .= String (pack $ show stok)
@@ -718,25 +790,25 @@ instance ToObject SlotNo where
 instance (HasHeader header, ConvertRawHash header)
   => ToObject (TraceFetchClientState header) where
   toObject _verb BlockFetch.AddedFetchRequest {} =
-    mkObject [ "kind" .= String "AddedFetchRequest" ]
+    mkObject [ "kind" .= String "AddedFetchRequestMODIFIED" ]
   toObject _verb BlockFetch.AcknowledgedFetchRequest {} =
-    mkObject [ "kind" .= String "AcknowledgedFetchRequest" ]
-  toObject _verb (BlockFetch.SendFetchRequest af) =
-    mkObject [ "kind" .= String "SendFetchRequest"
-             , "head" .= String (renderChainHash
-                                  (renderHeaderHash (Proxy @header))
-                                  (AF.headHash af))
-             , "length" .= toJSON (fragmentLength af)]
-   where
-     -- NOTE: this ignores the Byron era with its EBB complication:
-     -- the length would be underestimated by 1, if the AF is anchored
-     -- at the epoch boundary.
-     fragmentLength :: AF.AnchoredFragment header -> Int
-     fragmentLength f = fromIntegral . unBlockNo $
-        case (f, f) of
-          (AS.Empty{}, AS.Empty{}) -> 0
-          (firstHdr AS.:< _, _ AS.:> lastHdr) ->
-            blockNo lastHdr - blockNo firstHdr + 1
+    mkObject [ "kind" .= String "AcknowledgedFetchRequestMODIFIED" ]
+  toObject _verb (BlockFetch.SendFetchRequest _af) =
+    mkObject [ "kind" .= String "SendFetchRequest" ]
+          --   , "head" .= String (renderChainHash
+          --                        (renderHeaderHash (Proxy @header))
+          --                        (AF.headHash af))
+          --   , "length" .= toJSON (fragmentLength af)]
+  -- where
+  --   -- NOTE: this ignores the Byron era with its EBB complication:
+  --   -- the length would be underestimated by 1, if the AF is anchored
+  --   -- at the epoch boundary.
+  --   fragmentLength :: AF.AnchoredFragment header -> Int
+  --   fragmentLength f = fromIntegral . unBlockNo $
+  --      case (f, f) of
+  --        (AS.Empty{}, AS.Empty{}) -> 0
+  --        (firstHdr AS.:< _, _ AS.:> lastHdr) ->
+  --          blockNo lastHdr - blockNo firstHdr + 1
   toObject _verb (BlockFetch.CompletedBlockFetch pt _ _ _ _) =
     mkObject [ "kind"  .= String "CompletedBlockFetch"
              , "block" .= String
@@ -754,7 +826,7 @@ instance (HasHeader header, ConvertRawHash header)
     mkObject [ "kind" .= String "ClientTerminating" ]
 
 
-instance (ToObject peer)
+instance (Show peer)
       => ToObject [TraceLabelPeer peer (FetchDecision [Point header])] where
   toObject MinimalVerbosity _ = emptyObject
   toObject _ [] = emptyObject
@@ -763,9 +835,9 @@ instance (ToObject peer)
     , "peers" .= toJSON
       (foldl' (\acc x -> toObject MaximalVerbosity x : acc) [] xs) ]
 
-instance (ToObject peer, ToObject a) => ToObject (TraceLabelPeer peer a) where
+instance (Show peer, ToObject a) => ToObject (TraceLabelPeer peer a) where
   toObject verb (TraceLabelPeer peerid a) =
-    mkObject [ "peer" .= toObject verb peerid ] <> toObject verb a
+    mkObject [ "peer" .= show peerid ] <> toObject verb a
 
 
 instance ToObject (AnyMessageAndAgency ps)

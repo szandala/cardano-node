@@ -269,11 +269,11 @@ handleSimpleNode scp runP trace nodeTracers nc onKernel = do
   traceNamedObject
     (appendName "ip-producers" trace)
     (meta, LogMessage . Text.pack . show $ ipProducers)
-
+  --let test = trTransformer MinimalVerbosity $ Consensus.blockFetchClientTracer $ consensusTracers nodeTracers
   withShutdownHandling nc trace $ \sfds ->
    Node.run
      RunNodeArgs
-       { rnTraceConsensus = consensusTracers nodeTracers
+       { rnTraceConsensus = consensusTracers nodeTracers -- { Consensus.blockFetchClientTracer = nullTracer}
        , rnTraceNTN       = nodeToNodeTracers nodeTracers
        , rnTraceNTC       = nodeToClientTracers nodeTracers
        , rnProtocolInfo   = pInfo
@@ -294,6 +294,15 @@ handleSimpleNode scp runP trace nodeTracers nc onKernel = do
        , srnTraceChainDB                = chainDBTracer nodeTracers
        }
  where
+
+  --conv
+  --  :: Tracer IO (Ouroboros.Network.BlockFetch.ClientState.TraceLabelPeer
+  --                  RemoteConnectionId
+  --                  (Ouroboros.Network.BlockFetch.ClientState.TraceFetchClientState
+  --                  (Ouroboros.Consensus.Block.Abstract.Header blk)))
+  --  ->
+
+
   createDiffusionTracers :: Tracers RemoteConnectionId LocalConnectionId blk
                          -> DiffusionTracers
   createDiffusionTracers nodeTracers' = DiffusionTracers

@@ -21,17 +21,17 @@ import           Data.Text (pack)
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 
+import           Cardano.Slotting.Slot (fromWithOrigin)
 import           Cardano.Tracing.OrphanInstances.Common
 import           Cardano.Tracing.OrphanInstances.Network ()
 import           Cardano.Tracing.Render (renderChainHash, renderChunkNo, renderHeaderHash,
                    renderHeaderHashForVerbosity, renderPoint, renderPointAsPhrase,
                    renderPointForVerbosity, renderRealPoint, renderRealPointAsPhrase,
                    renderTipBlockNo, renderTipHash, renderWithOrigin)
-import           Cardano.Slotting.Slot (fromWithOrigin)
 
-import           Ouroboros.Consensus.Block (BlockProtocol, CannotForge, ConvertRawHash (..),
-                   ForgeStateUpdateError, Header, RealPoint, getHeader, headerPoint, realPointHash,
-                   realPointSlot, blockNo, blockPrevHash, pointHash)
+import           Ouroboros.Consensus.Block (BlockProtocol, BlockSupportsProtocol, CannotForge,
+                   ConvertRawHash (..), ForgeStateUpdateError, Header, RealPoint, blockNo,
+                   blockPrevHash, getHeader, headerPoint, pointHash, realPointHash, realPointSlot)
 import           Ouroboros.Consensus.HeaderValidation
 import           Ouroboros.Consensus.Ledger.Abstract
 import           Ouroboros.Consensus.Ledger.Extended
@@ -41,7 +41,8 @@ import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, GenTx, 
                    LedgerSupportsMempool, TxId, txForgetValidated, txId)
 import           Ouroboros.Consensus.Ledger.SupportsProtocol (LedgerSupportsProtocol)
 import           Ouroboros.Consensus.Mempool.API (MempoolSize (..), TraceEventMempool (..))
-import           Ouroboros.Consensus.MiniProtocol.BlockFetch.Server (TraceBlockFetchServerEvent (..))
+import           Ouroboros.Consensus.MiniProtocol.BlockFetch.Server
+                   (TraceBlockFetchServerEvent (..))
 import           Ouroboros.Consensus.MiniProtocol.ChainSync.Client (TraceChainSyncClientEvent (..))
 import           Ouroboros.Consensus.MiniProtocol.ChainSync.Server (TraceChainSyncServerEvent (..))
 import           Ouroboros.Consensus.MiniProtocol.LocalTxSubmission.Server
@@ -60,7 +61,9 @@ import           Ouroboros.Consensus.Util.Orphans ()
 import qualified Ouroboros.Network.AnchoredFragment as AF
 import           Ouroboros.Network.Block (BlockNo (..), ChainUpdate (..), SlotNo (..), StandardHash,
                    Tip (..), blockHash, pointSlot, tipFromHeader)
+import           Ouroboros.Network.BlockFetch.ClientState (TraceLabelPeer (..))
 import           Ouroboros.Network.Point (withOrigin)
+
 
 import qualified Ouroboros.Consensus.Storage.ChainDB as ChainDB
 -- TODO: 'TraceCacheEvent' should be exported by the 'Impl' module
@@ -151,6 +154,13 @@ instance HasPrivacyAnnotation (TraceBlockFetchServerEvent blk)
 instance HasSeverityAnnotation (TraceBlockFetchServerEvent blk) where
   getSeverityAnnotation _ = Info
 
+
+instance (BlockSupportsProtocol blk, Show peer, Show (Header blk), ToObject (TraceChainSyncClientEvent blk))
+    => Transformable Text IO (TraceLabelPeer peer (TraceChainSyncClientEvent blk)) where
+  trTransformer = trStructuredText
+instance (BlockSupportsProtocol blk, Show peer, Show (Header blk))
+    => HasTextFormatter (TraceLabelPeer peer (TraceChainSyncClientEvent blk)) where
+  formatText a _ = pack $ show a
 
 instance HasPrivacyAnnotation (TraceChainSyncClientEvent blk)
 instance HasSeverityAnnotation (TraceChainSyncClientEvent blk) where

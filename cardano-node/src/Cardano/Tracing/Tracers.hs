@@ -62,7 +62,7 @@ import           Ouroboros.Consensus.HeaderValidation (OtherHeaderEnvelopeError)
 import           Ouroboros.Consensus.Ledger.Abstract (LedgerErr, LedgerState)
 import           Ouroboros.Consensus.Ledger.Extended (ledgerState)
 import           Ouroboros.Consensus.Ledger.Inspect (InspectLedger, LedgerEvent)
-import           Ouroboros.Consensus.Ledger.Query (Query)
+import           Ouroboros.Consensus.Ledger.Query (BlockQuery, Query)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, GenTx, GenTxId, HasTxs,
                    LedgerSupportsMempool)
 import           Ouroboros.Consensus.Ledger.SupportsProtocol (LedgerSupportsProtocol)
@@ -84,6 +84,7 @@ import qualified Ouroboros.Network.NodeToNode as NtN
 import           Ouroboros.Network.Point (fromWithOrigin, withOrigin)
 import           Ouroboros.Network.Protocol.LocalStateQuery.Type (ShowQuery)
 import           Ouroboros.Network.Subscription
+import           Ouroboros.Network.TxSubmission.Outbound (TraceTxSubmissionOutbound (..))
 
 import qualified Ouroboros.Consensus.Storage.ChainDB as ChainDB
 import qualified Ouroboros.Consensus.Storage.LedgerDB.OnDisk as LedgerDB
@@ -106,7 +107,7 @@ import           Ouroboros.Network.TxSubmission.Inbound
 import qualified Cardano.Node.STM as STM
 import qualified Control.Concurrent.STM as STM
 import qualified Ouroboros.Network.Diffusion as ND
-
+--import Cardano.Tracing.OrphanInstances.Network ()
 import           Shelley.Spec.Ledger.OCert (KESPeriod (..))
 
 {- HLINT ignore "Redundant bracket" -}
@@ -218,7 +219,7 @@ instance ElidingTracer (WithSeverity (ChainDB.TraceEvent blk)) where
   doelide (WithSeverity _ (ChainDB.TraceAddBlockEvent (ChainDB.BlockInTheFuture _ _))) = False
   doelide (WithSeverity _ (ChainDB.TraceAddBlockEvent (ChainDB.StoreButDontChange _))) = False
   doelide (WithSeverity _ (ChainDB.TraceAddBlockEvent (ChainDB.TrySwitchToAFork _ _))) = False
-  doelide (WithSeverity _ (ChainDB.TraceAddBlockEvent (ChainDB.SwitchedToAFork{}))) = False
+  doelide (WithSeverity _ (ChainDB.TraceAddBlockEvent ChainDB.SwitchedToAFork{})) = False
   doelide (WithSeverity _ (ChainDB.TraceAddBlockEvent (ChainDB.AddBlockValidation (ChainDB.InvalidBlock _ _)))) = False
   doelide (WithSeverity _ (ChainDB.TraceAddBlockEvent (ChainDB.AddBlockValidation (ChainDB.InvalidCandidate _)))) = False
   doelide (WithSeverity _ (ChainDB.TraceAddBlockEvent (ChainDB.AddBlockValidation ChainDB.CandidateContainsFutureBlocksExceedingClockSkew{}))) = False
@@ -262,7 +263,7 @@ instance (StandardHash header, Eq peer) => ElidingTracer
     let checkDecision :: TraceLabelPeer peer (Either FetchDecline result) -> Bool
         checkDecision (TraceLabelPeer _peer (Left FetchDeclineChainNotPlausible)) = True
         checkDecision (TraceLabelPeer _peer (Left (FetchDeclineConcurrencyLimit _ _))) = True
-        checkDecision (TraceLabelPeer _peer (Left (FetchDeclinePeerBusy _ _ _))) = True
+        checkDecision (TraceLabelPeer _peer (Left FetchDeclinePeerBusy{})) = True
         checkDecision _ = False
     in any checkDecision peers
   conteliding _tverb _tr _ (Nothing, _count) = return (Nothing, 0)
@@ -279,8 +280,8 @@ mkTracers
      , HasKESMetricsData blk
      , HasKESInfo blk
      , TraceConstraints blk
-     , Show peer, Eq peer, ToObject peer
-     , Show localPeer, ToObject localPeer
+     , Show peer, Eq peer
+     , Show localPeer
      )
   => BlockConfig blk
   -> TraceOptions
@@ -510,7 +511,8 @@ mkConsensusTracers
      , ToObject (OtherHeaderEnvelopeError blk)
      , ToObject (ValidationErr (BlockProtocol blk))
      , ToObject (ForgeStateUpdateError blk)
-     , ToObject peer
+     , Transformable Text IO (TraceLabelPeer peer (TraceTxSubmissionInbound (GenTxId blk) (GenTx blk)))
+     , Transformable Text IO (TraceLabelPeer peer (TraceTxSubmissionOutbound (GenTxId blk) (GenTx blk)))
      , Consensus.RunNode blk
      , HasKESMetricsData blk
      , HasKESInfo blk
@@ -544,6 +546,7 @@ mkConsensusTracers mbEKGDirect trSel verb tr nodeKern fStats = do
     , Consensus.chainSyncServerBlockTracer = tracerOnOff (traceChainSyncBlockServer trSel) verb "ChainSyncBlockServer" tr
     , Consensus.blockFetchDecisionTracer = tracerOnOff' (traceBlockFetchDecisions trSel) $
         annotateSeverity $ teeTraceBlockFetchDecision verb elidedFetchDecision tr
+        -- TODO: this is where we get the block fetch tracer
     , Consensus.blockFetchClientTracer = tracerOnOff (traceBlockFetchClient trSel) verb "BlockFetchClient" tr
     , Consensus.blockFetchServerTracer = tracerOnOff' (traceBlockFetchServer trSel) $
         Tracer $ \ev -> do
@@ -831,7 +834,7 @@ notifyTxsProcessed fStats tr = Tracer $ \case
     -- TraceMempoolRemoveTxs are previously valid transactions that are no longer valid because of
     -- changes in the ledger state. These transactions are already removed from the mempool,
     -- so we can treat them as completely processed.
-    updatedTxProcessed <- mapForgingStatsTxsProcessed fStats (+ (length txs))
+    updatedTxProcessed <- mapForgingStatsTxsProcessed fStats (+ length txs)
     traceCounter "txsProcessedNum" tr (fromIntegral updatedTxProcessed)
   -- The rest of the constructors.
   _ -> return ()
@@ -968,8 +971,8 @@ nodeToClientTracers'
      , Show (ApplyTxErr blk)
      , Show (GenTx blk)
      , Show localPeer
-     , ToObject localPeer
      , ShowQuery (Query blk)
+     , ShowQuery (BlockQuery blk)
      )
   => TraceSelection
   -> TracingVerbosity
@@ -996,7 +999,6 @@ nodeToNodeTracers'
      , Show blk
      , Show (Header blk)
      , Show peer
-     , ToObject peer
      )
   => TraceSelection
   -> TracingVerbosity
@@ -1016,7 +1018,6 @@ teeTraceBlockFetchDecision
     :: ( Eq peer
        , HasHeader blk
        , Show peer
-       , ToObject peer
        )
     => TracingVerbosity
     -> MVar (Maybe (WithSeverity [TraceLabelPeer peer (FetchDecision [Point (Header blk)])]),Integer)
@@ -1042,7 +1043,6 @@ teeTraceBlockFetchDecisionElide
     :: ( Eq peer
        , HasHeader blk
        , Show peer
-       , ToObject peer
        )
     => TracingVerbosity
     -> MVar (Maybe (WithSeverity [TraceLabelPeer peer (FetchDecision [Point (Header blk)])]),Integer)

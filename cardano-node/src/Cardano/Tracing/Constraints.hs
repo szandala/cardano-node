@@ -5,11 +5,12 @@ module Cardano.Tracing.Constraints
   ( TraceConstraints
   ) where
 
-import           Prelude (Show)
+import           Prelude (IO, Show)
 
 import           Data.Aeson
+import           Data.Text (Text)
 
-import           Cardano.BM.Tracing (ToObject)
+import           Cardano.BM.Tracing (ToObject, Transformable)
 import           Cardano.Tracing.ConvertTxId (ConvertTxId)
 import           Cardano.Tracing.Queries (LedgerQueries)
 
@@ -25,9 +26,13 @@ import           Ouroboros.Consensus.Block (BlockProtocol, CannotForge, ForgeSta
 import           Ouroboros.Consensus.HeaderValidation (OtherHeaderEnvelopeError)
 import           Ouroboros.Consensus.Ledger.Abstract (LedgerError)
 import           Ouroboros.Consensus.Ledger.Inspect (LedgerEvent)
-import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, HasTxId, HasTxs (..))
+import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, GenTxId, HasTxId,
+                   HasTxs (..))
 import           Ouroboros.Consensus.Protocol.Abstract (ValidationErr)
 import           Ouroboros.Consensus.Shelley.Ledger.Mempool (GenTx, TxId)
+import           Ouroboros.Network.BlockFetch.ClientState (TraceLabelPeer (..))
+import           Ouroboros.Network.NodeToNode (RemoteConnectionId)
+import           Ouroboros.Network.TxSubmission.Inbound (TraceTxSubmissionInbound (..))
 
 -- | Tracing-related constraints for monitoring purposes.
 type TraceConstraints blk =
@@ -50,6 +55,7 @@ type TraceConstraints blk =
     , ToObject (UtxoPredicateFailure (AlonzoEra StandardCrypto))
     , ToObject (AlonzoBbodyPredFail (AlonzoEra StandardCrypto))
     , ToObject (AlonzoPredFail (AlonzoEra StandardCrypto))
+    , Transformable Text IO (TraceLabelPeer RemoteConnectionId (TraceTxSubmissionInbound (GenTxId blk) (GenTx blk)))
     , Show blk
     , Show (Header blk)
     )

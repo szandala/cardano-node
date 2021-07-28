@@ -83,6 +83,7 @@ sed -i ${ROOT}/configuration.yaml \
     -e '/ByronGenesisFile/ aAlonzoGenesisFile: shelley/genesis.alonzo.json' \
     -e 's/RequiresNoMagic/RequiresMagic/' \
     -e 's/LastKnownBlockVersion-Major: 0/LastKnownBlockVersion-Major: 1/' \
+    -e 's/TraceBlockFetchClient: False/TraceBlockFetchClient: True/' \
     -e 's/LastKnownBlockVersion-Minor: 2/LastKnownBlockVersion-Minor: 0/'
 # Options for making it easier to trigger the transition to Shelley
 # If neither of those are used, we have to

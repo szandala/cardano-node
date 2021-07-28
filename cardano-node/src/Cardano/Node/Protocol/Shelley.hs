@@ -52,6 +52,7 @@ import           Cardano.Api.Shelley hiding (FileError)
 import           Cardano.Node.Types
 
 import           Cardano.Tracing.OrphanInstances.HardFork ()
+import           Cardano.Tracing.OrphanInstances.Network ()
 import           Cardano.Tracing.OrphanInstances.Shelley ()
 
 import           Cardano.Node.Protocol.Types
