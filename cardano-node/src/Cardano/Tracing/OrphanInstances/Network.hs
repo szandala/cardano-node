@@ -92,6 +92,9 @@ instance HasSeverityAnnotation NtN.AcceptConnectionsPolicyTrace where
   getSeverityAnnotation NtN.ServerTraceAcceptConnectionRateLimiting {} = Info
   getSeverityAnnotation NtN.ServerTraceAcceptConnectionHardLimit {} = Warning
 
+instance (HasHeader header, ConvertRawHash header)
+    => Transformable Text IO (TraceFetchClientState header) where
+  trTransformer = trStructured
 
 instance HasPrivacyAnnotation (TraceFetchClientState header)
 instance HasSeverityAnnotation (TraceFetchClientState header) where
