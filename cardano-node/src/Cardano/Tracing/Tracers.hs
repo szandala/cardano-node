@@ -9,6 +9,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
@@ -45,7 +46,12 @@ import qualified System.Metrics.Label as Label
 import qualified System.Remote.Monitoring as EKG
 
 import           Control.Tracer
+import           Network.Mux (MuxTrace, WithMuxBearer)
+import qualified Network.Socket as Socket (SockAddr)
+
+import "contra-tracer" Control.Tracer
 import           Control.Tracer.Transformers
+import           Cardano.TraceDispatcher.BasicInfo.Types (BasicInfo)
 
 import           Cardano.Slotting.Slot (EpochNo (..), SlotNo (..), WithOrigin (..))
 
@@ -107,6 +113,7 @@ import           Cardano.Tracing.Metrics
 import           Cardano.Tracing.Startup
 
 import           Cardano.Node.Configuration.Logging
+
 -- For tracing instances
 import           Cardano.Node.Protocol.Byron ()
 import           Cardano.Node.Protocol.Shelley ()
@@ -138,7 +145,11 @@ data Tracers peer localPeer blk p2p = Tracers
                                           LocalAddress NodeToClientVersion
                                           IO
   , diffusionTracersExtra :: Diffusion.ExtraTracers p2p
+
   , startupTracer :: Tracer IO (StartupTrace blk)
+
+  , basicInfoTracer :: Tracer IO BasicInfo
+
   }
 
 data ForgeTracers = ForgeTracers
@@ -165,6 +176,7 @@ nullTracersP2P = Tracers
   , diffusionTracers = Diffusion.nullTracers
   , diffusionTracersExtra = Diffusion.P2PTracers P2P.nullTracers
   , startupTracer = nullTracer
+  , basicInfoTracer = nullTracer
   }
 
 nullTracersNonP2P :: Tracers peer localPeer blk Diffusion.NonP2P
@@ -278,9 +290,11 @@ instance (StandardHash header, Eq peer) => ElidingTracer
 mkTracers
   :: forall blk p2p.
      ( Consensus.RunNode blk
-     , HasKESMetricsData blk
-     , HasKESInfo blk
      , TraceConstraints blk
+     , Show peer, Eq peer
+     , Show localPeer
+     , ToObject peer
+     , ToObject localPeer
      )
   => BlockConfig blk
   -> TraceOptions
@@ -313,6 +327,7 @@ mkTracers blockConfig tOpts@(TracingOn trSel) tr nodeKern ekgDirect enableP2P = 
     -- TODO: startupTracer should ignore severity level (i.e. it should always
     -- be printed)!
     , startupTracer = toLogObject' verb $ appendName "nodeconfig" tr
+    , basicInfoTracer = nullTracer
     }
  where
    diffusionTracers = Diffusion.Tracers
@@ -373,12 +388,12 @@ mkTracers blockConfig tOpts@(TracingOn trSel) tr nodeKern ekgDirect enableP2P = 
                             verb "LocalServer" tr
            , P2P.dtLocalInboundGovernorTracer =
                tracerOnOff (traceLocalInboundGovernor trSel)
-                            verb "LocalInboundGovernor" tr 
+                            verb "LocalInboundGovernor" tr
            }
        DisabledP2PMode ->
          Diffusion.NonP2PTracers NonP2P.TracersExtra
            { NonP2P.dtIpSubscriptionTracer =
-               tracerOnOff (traceIpSubscription trSel) verb "IpSubscription" tr 
+               tracerOnOff (traceIpSubscription trSel) verb "IpSubscription" tr
            , NonP2P.dtDnsSubscriptionTracer =
                tracerOnOff (traceDnsSubscription trSel) verb "DnsSubscription" tr
            , NonP2P.dtDnsResolverTracer =
@@ -444,6 +459,7 @@ mkTracers _ TracingOff _ _ _ enableP2P =
           EnabledP2PMode  -> Diffusion.P2PTracers P2P.nullTracers
           DisabledP2PMode -> Diffusion.NonP2PTracers NonP2P.nullTracers
     , startupTracer = nullTracer
+    , basicInfoTracer = nullTracer
     }
 
 --------------------------------------------------------------------------------
@@ -467,6 +483,7 @@ teeTraceChainTip
   -> Trace IO Text
   -> Tracer IO (WithSeverity (ChainDB.TraceEvent blk))
 teeTraceChainTip _ _ TracingOff _ _ _ _ _ = nullTracer
+teeTraceChainTip _ _ TraceDispatcher{} _ _ _ _ _ = nullTracer
 teeTraceChainTip blockConfig fStats (TracingOn trSel) elided ekgDirect tFork trTrc trMet =
   Tracer $ \ev -> do
     traceWith (teeTraceChainTipElide (traceVerbosity trSel) elided trTrc) ev
@@ -585,6 +602,7 @@ mkConsensusTracers
   :: forall blk peer localPeer.
      ( Show peer
      , Eq peer
+     , ToObject peer
      , LedgerQueries blk
      , ToJSON (GenTxId blk)
      , ToObject (ApplyTxErr blk)
@@ -594,7 +612,6 @@ mkConsensusTracers
      , ToObject (OtherHeaderEnvelopeError blk)
      , ToObject (ValidationErr (BlockProtocol blk))
      , ToObject (ForgeStateUpdateError blk)
-     , ToObject peer
      , Consensus.RunNode blk
      , HasKESMetricsData blk
      , HasKESInfo blk
@@ -1202,8 +1219,8 @@ forgeStateInfoTracer p _ts tracer = Tracer $ \ev -> do
 --------------------------------------------------------------------------------
 
 nodeToClientTracers'
-  :: ( ToObject localPeer
-     , ShowQuery (BlockQuery blk)
+  :: ( ShowQuery (BlockQuery blk)
+     , ToObject localPeer
      )
   => TraceSelection
   -> TracingVerbosity
