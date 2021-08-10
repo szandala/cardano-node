@@ -6,8 +6,6 @@ description:            End to end examples of creating and executing Plutus scr
 author:                 IOHK
 maintainer:             operations@iohk.io
 license:                Apache-2.0
-license-files:          LICENSE
-                        NOTICE
 build-type:             Simple
 extra-source-files:     README.md
 
@@ -47,17 +45,24 @@ library
 
   exposed-modules:      Cardano.PlutusExample.AlwaysFails
                         Cardano.PlutusExample.AlwaysSucceeds
+                        Cardano.PlutusExample.CustomDatumRedeemerGuess
                         Cardano.PlutusExample.DatumRedeemerGuess
                         Cardano.PlutusExample.MintingScript
-                        Cardano.PlutusExample.CustomDatumRedeemerGuess
+                        Cardano.PlutusExample.ScriptContextChecker
 
-  build-depends:        bytestring
+  build-depends:        aeson
+                      , bytestring
                       , cardano-api
+                      , cardano-ledger-alonzo
+                      , data-default
+                      , filepath
                       , plutus-ledger
                       , plutus-ledger-api
                       , plutus-tx
                       , plutus-tx-plugin
                       , serialise
+                      , transformers
+                      , transformers-except
 
 executable plutus-example
   import:               base, project-config
@@ -66,6 +71,18 @@ executable plutus-example
   ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
 
   build-depends:        cardano-api
+                      , bytestring
                       , directory
                       , filepath
                       , plutus-example
+
+
+executable create-script-context
+  import:               base, project-config
+  hs-source-dirs:       app
+  main-is:              create-script-context.hs
+  ghc-options:          -threaded -rtsopts "-with-rtsopts=-T"
+
+  build-depends:        bytestring
+                      , plutus-example
+                      , transformers

@@ -6,12 +6,12 @@ import           Cardano.Api
 import           System.Directory
 import           System.FilePath.Posix ((</>))
 
-import           Cardano.PlutusExample.CustomDatumRedeemerGuess
 import           Cardano.PlutusExample.AlwaysFails (alwaysFailsScript)
 import           Cardano.PlutusExample.AlwaysSucceeds (alwaysSucceedsScript)
+import           Cardano.PlutusExample.CustomDatumRedeemerGuess
 import           Cardano.PlutusExample.DatumRedeemerGuess (guessScript)
 import           Cardano.PlutusExample.MintingScript (apiExamplePlutusMintingScript)
-
+import           Cardano.PlutusExample.ScriptContextChecker
 
 main :: IO ()
 main = do
@@ -23,4 +23,5 @@ main = do
   _ <- writeFileTextEnvelope (dir </> "guess-42-datum-42-txin.plutus") Nothing guessScript
   _ <- writeFileTextEnvelope (dir </> "custom-guess-42-datum-42.plutus") Nothing customGuessScript
   _ <- writeFileTextEnvelope (dir </> "anyone-can-mint.plutus") Nothing apiExamplePlutusMintingScript
+  _ <- writeFileTextEnvelope (dir </> "context-equivalance-test.plutus") Nothing scriptContextCheckScript
   return ()

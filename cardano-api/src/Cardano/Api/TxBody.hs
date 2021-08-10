@@ -127,6 +127,7 @@ module Cardano.Api.TxBody (
     toAlonzoRdmrPtr,
     fromAlonzoRdmrPtr,
     fromByronTxIn,
+    fromLedgerTxOuts,
     renderTxIn,
 
     -- * Data family instances

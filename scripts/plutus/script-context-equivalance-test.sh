@@ -19,27 +19,15 @@ echo "Socket path: $(pwd)"
 
 ls -al "$CARDANO_NODE_SOCKET_PATH"
 
-if [ "$1" == "guessinggame" ]; then
- # NB: This plutus script uses a "typed" redeemer and "typed" datum.
- plutusscriptinuse="$BASE/scripts/plutus/scripts/custom-guess-42-datum-42.plutus"
- # This datum hash is the hash of the typed 42
- scriptdatumhash="e68306b4087110b0191f5b70638b9c6fc1c3eb335275e40d110779d71aa86083"
- #50000000000
- datumfilepath="$BASE/scripts/plutus/data/typed-42.datum"
- redeemerfilepath="$BASE/scripts/plutus/data/script-context.redeemer"
- echo "Guessing game Plutus script in use. The datum and redeemer must be equal to 42."
- echo "Script at: $plutusscriptinuse"
-
-elif [ "$1" == "" ]; then
- plutusscriptinuse="$BASE/scripts/plutus/scripts/always-succeeds-spending.plutus"
- # This datum hash is the hash of the untyped 42
- scriptdatumhash="9e1199a988ba72ffd6e9c269cadb3b53b5f360ff99f112d9b2ee30c4d74ad88b"
- datumfilepath="$BASE/scripts/plutus/data/42.datum"
- redeemerfilepath="$BASE/scripts/plutus/data/42.redeemer"
- echo "Always succeeds Plutus script in use. Any datum and redeemer combination will succeed."
- echo "Script at: $plutusscriptinuse"
-fi
-
+# NB: This plutus script uses a "typed" redeemer and "typed" datum.
+plutusscriptinuse="$BASE/scripts/plutus/scripts/context-equivalance-test.plutus"
+# This datum hash is the hash of the typed 42
+scriptdatumhash="e68306b4087110b0191f5b70638b9c6fc1c3eb335275e40d110779d71aa86083"
+#50000000000
+datumfilepath="$BASE/scripts/plutus/data/typed-42.datum"
+redeemerfilepath="$BASE/scripts/plutus/data/script-context.redeemer"
+echo "Guessing game Plutus script in use. The datum and redeemer must be equal to 42."
+echo "Script at: $plutusscriptinuse"
 
 # Step 1: Create a tx ouput with a datum hash at the script address. In order for a tx ouput to be locked
 # by a plutus script, it must have a datahash. We also need collateral tx inputs so we split the utxo
@@ -107,10 +95,15 @@ echo "$plutusutxotxin"
 echo "Collateral"
 echo "$txinCollateral"
 
+#We need to generate a dummy redeemer in order to get a txbody from which we can generate
+# the "real redeemer"
+echo "generate" | create-script-context
+
 $CARDANO_CLI transaction build \
   --alonzo-era \
   --cardano-mode \
   --testnet-magic "$TESTNET_MAGIC" \
+  --script-invalid \
   --change-address "$utxoaddr" \
   --tx-in "$plutusutxotxin" \
   --tx-in-collateral "$txinCollateral" \
@@ -121,8 +114,26 @@ $CARDANO_CLI transaction build \
   --tx-in-redeemer-file "$redeemerfilepath" \
   --out-file $WORK/test-alonzo.body
 
+# Generate the "real" redeeemer
+echo "$WORK/test-alonzo.body" | create-script-context
+
+$CARDANO_CLI transaction build \
+  --alonzo-era \
+  --cardano-mode \
+  --testnet-magic "$TESTNET_MAGIC" \
+  --script-valid \
+  --change-address "$utxoaddr" \
+  --tx-in "$plutusutxotxin" \
+  --tx-in-collateral "$txinCollateral" \
+  --tx-out "$dummyaddress+10000000" \
+  --tx-in-script-file "$plutusscriptinuse" \
+  --tx-in-datum-file "$datumfilepath"  \
+  --protocol-params-file "$WORK/pparams.json" \
+  --tx-in-redeemer-file "$redeemerfilepath" \
+  --out-file $WORK/test-alonzo-final.body
+
 $CARDANO_CLI transaction sign \
-  --tx-body-file $WORK/test-alonzo.body \
+  --tx-body-file $WORK/test-alonzo-final.body \
   --testnet-magic "$TESTNET_MAGIC" \
   --signing-key-file "${UTXO_SKEY}" \
   --out-file $WORK/alonzo.tx

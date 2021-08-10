@@ -580,6 +580,7 @@ module Cardano.Api (
     -- ** Conversions
     --TODO: arrange not to export these
     toNetworkMagic,
+    fromLedgerTxOuts,
     --TODO: Remove after updating cardano-node-chairman with new IPC
     SomeNodeClientProtocol(..),
 
