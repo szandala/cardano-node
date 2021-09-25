@@ -41,8 +41,17 @@ jobs:
     - uses: haskell/actions/setup@v1
       id: setup-haskell
       with:
-        ghc-version: ${{ matrix.ghc }}
-        cabal-version: 3.6.2.0
+        ghcup: 0.1.17.3
+
+    - name: Install Haskell tooling
+      run: |
+        ls C:/ghcup/bin
+        ghcup install ghc   ${{ matrix.ghc }}
+        ghcup set     ghc   ${{ matrix.ghc }}
+        ghcup install cabal ${{ matrix.cabal }}
+        ghcup set     cabal ${{ matrix.cabal }}
+        cabal --version
+        ghc --version
 
     - name: Set cache version
       run: echo "CACHE_VERSION=grFfw8r" >> $GITHUB_ENV
