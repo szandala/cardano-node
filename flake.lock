@@ -683,13 +683,18 @@
     "mainnet-chain_3": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-fyomo9Dl9ShXp44iBoNmuE5kJOmELJ9A+LN0Aj2rb9U=",
-        "path": "/home/clever/chain",
-        "type": "path"
+        "lastModified": 1634568328,
+        "narHash": "sha256-1E9cFhnr/KrycQnFMSiRcxF5fXvrgObN1//zDrea3lY=",
+        "owner": "input-output-hk",
+        "repo": "cardano-mainnet-mirror",
+        "rev": "b6882f314f4f826e193dc2341cbd0d5f6970cde3",
+        "type": "github"
       },
       "original": {
-        "path": "/home/clever/chain",
-        "type": "path"
+        "owner": "input-output-hk",
+        "ref": "shelley",
+        "repo": "cardano-mainnet-mirror",
+        "type": "github"
       }
     },
     "membench": {
@@ -703,11 +708,11 @@
         "ouroboros-network": "ouroboros-network"
       },
       "locked": {
-        "lastModified": 1634341095,
-        "narHash": "sha256-yIjmPDKOIC1UiFslFjQoQckwOGPiv/r0OB+Be5DxlmY=",
+        "lastModified": 1634572047,
+        "narHash": "sha256-qf48JnLsi13PCv5gForyJN3cX7Sqteds7NEqMHsTL2g=",
         "owner": "input-output-hk",
         "repo": "cardano-memory-benchmark",
-        "rev": "0cfef07bb0bbfbd1e154f2849d585c924fdb0a10",
+        "rev": "dcc689bf21d647deb1e770868270644fbc75efd9",
         "type": "github"
       },
       "original": {
