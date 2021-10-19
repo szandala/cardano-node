@@ -708,11 +708,11 @@
         "ouroboros-network": "ouroboros-network"
       },
       "locked": {
-        "lastModified": 1634572047,
-        "narHash": "sha256-qf48JnLsi13PCv5gForyJN3cX7Sqteds7NEqMHsTL2g=",
+        "lastModified": 1634640546,
+        "narHash": "sha256-LWAEP06XHpVux+ldej+yM06x3OA+6EmoMOo4SfV5ydA=",
         "owner": "input-output-hk",
         "repo": "cardano-memory-benchmark",
-        "rev": "dcc689bf21d647deb1e770868270644fbc75efd9",
+        "rev": "cc912b56f693457d31e6fda377b0d563c3cbf3b6",
         "type": "github"
       },
       "original": {
