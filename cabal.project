@@ -13,6 +13,7 @@ packages:
     bench/locli
     bench/tx-generator
     plutus-example/plutus-example
+    datapoint-forward
     trace-dispatcher
     trace-resources
     trace-forward
@@ -83,6 +84,9 @@ package cardano-tracer
   tests: True
 
 package trace-dispatcher
+  tests: True
+
+package datapoint-forward
   tests: True
 
 package trace-forward
