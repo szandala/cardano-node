@@ -138,7 +138,6 @@ library
                       , ouroboros-consensus-shelley
                       , ouroboros-network
                       , ouroboros-network-framework
-                      , process
                       , psqueues
                       , safe-exceptions
                       , scientific

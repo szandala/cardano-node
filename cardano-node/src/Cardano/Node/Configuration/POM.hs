@@ -41,7 +41,8 @@ import           Cardano.Crypto (RequiresNetworkMagic (..))
 import           Cardano.Node.Protocol.Types (Protocol (..))
 import           Cardano.Node.Types
 import           Cardano.Tracing.Config
-import           Ouroboros.Consensus.Mempool.API (MempoolCapacityBytesOverride (..), MempoolCapacityBytes (..))
+import           Ouroboros.Consensus.Mempool.API (MempoolCapacityBytes (..),
+                   MempoolCapacityBytesOverride (..))
 import           Ouroboros.Consensus.Storage.LedgerDB.DiskPolicy (SnapshotInterval (..))
 import           Ouroboros.Network.Block (MaxSlotNo (..))
 import           Ouroboros.Network.NodeToNode (DiffusionMode (..))
@@ -151,7 +152,7 @@ data PartialNodeConfiguration
        , pncDatabaseFile    :: !(Last DbFile)
        , pncProtocolFiles   :: !(Last ProtocolFilepaths)
        , pncValidateDB      :: !(Last Bool)
-       , pncShutdownIPC     :: !(Last (Maybe Fd))
+       , pncShutdownIPC     :: !(Last Fd)
        , pncShutdownOnSlotSynced :: !(Last MaxSlotNo)
 
          -- Protocol-specific parameters:
@@ -440,7 +441,6 @@ makeNodeConfiguration pnc = do
   databaseFile <- lastToEither "Missing DatabaseFile" $ pncDatabaseFile pnc
   protocolFiles <- lastToEither "Missing ProtocolFiles" $ pncProtocolFiles pnc
   validateDB <- lastToEither "Missing ValidateDB" $ pncValidateDB pnc
-  shutdownIPC <- lastToEither "Missing ShutdownIPC" $ pncShutdownIPC pnc
   shutdownOnSlotSynced <- lastToEither "Missing ShutdownOnSlotSynced" $ pncShutdownOnSlotSynced pnc
   protocolConfig <- lastToEither "Missing ProtocolConfig" $ pncProtocolConfig pnc
   loggingSwitch <- lastToEither "Missing LoggingSwitch" $ pncLoggingSwitch pnc
@@ -483,7 +483,7 @@ makeNodeConfiguration pnc = do
              , ncDatabaseFile = databaseFile
              , ncProtocolFiles = protocolFiles
              , ncValidateDB = validateDB
-             , ncShutdownIPC = shutdownIPC
+             , ncShutdownIPC = getLast $ pncShutdownIPC pnc
              , ncShutdownOnSlotSynced = shutdownOnSlotSynced
              , ncProtocolConfig = protocolConfig
              , ncSocketPath = getLast $ pncSocketPath pnc

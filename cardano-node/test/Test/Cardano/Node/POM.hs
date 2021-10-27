@@ -12,10 +12,10 @@ import           Data.Time.Clock (secondsToDiffTime)
 import           Cardano.Node.Configuration.POM
 import           Cardano.Node.Types
 import           Cardano.Tracing.Config (TraceOptions (..))
+import qualified Ouroboros.Consensus.Node as Consensus (NetworkP2PMode (..))
+import           Ouroboros.Consensus.Storage.LedgerDB.DiskPolicy (SnapshotInterval (..))
 import           Ouroboros.Network.Block (MaxSlotNo (..), SlotNo (..))
 import           Ouroboros.Network.NodeToNode (DiffusionMode (InitiatorAndResponderDiffusionMode))
-import           Ouroboros.Consensus.Storage.LedgerDB.DiskPolicy (SnapshotInterval (..))
-import qualified Ouroboros.Consensus.Node as Consensus ( NetworkP2PMode (..) )
 
 import           Hedgehog (Property, discover, withTests, (===))
 import qualified Hedgehog
@@ -93,7 +93,7 @@ testPartialCliConfig =
     , pncTestEnableDevelopmentNetworkProtocols = Last $ Just True
     , pncProtocolFiles = Last . Just $ ProtocolFilepaths Nothing Nothing Nothing Nothing Nothing Nothing
     , pncValidateDB = Last $ Just True
-    , pncShutdownIPC = Last $ Just Nothing
+    , pncShutdownIPC = Last Nothing
     , pncShutdownOnSlotSynced = Last . Just . MaxSlotNo $ SlotNo 42
     , pncProtocolConfig = mempty
     , pncMaxConcurrencyBulkSync = mempty
