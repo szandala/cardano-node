@@ -9,6 +9,9 @@ module Cardano.Logging.Tracer.Composed (
 
 import           Data.Maybe (fromMaybe)
 import           Data.Text
+import           Data.Aeson.Types(ToJSON)
+
+import           DataPoint.Forward.Utils (DataPoint(..))
 
 import           Cardano.Logging.Configuration
 import           Cardano.Logging.Formatter
@@ -123,11 +126,10 @@ mkCardanoTracer' trStdout trForward mbTrEkg name namesFor severityFor privacyFor
 
 -- A simple dataPointTracer which supports building a namespace and entering a hook
 -- function.
-mkDataPointTracer :: forall dp dp1.
-     Trace IO dp1
+mkDataPointTracer :: forall dp. ToJSON dp
+  => Trace IO DataPoint
   -> (dp -> [Text])
-  -> (Trace IO dp1 -> IO (Trace IO dp))
   -> IO (Trace IO dp)
-mkDataPointTracer trDataPoint namesFor hook = do
-    tr <- hook trDataPoint
+mkDataPointTracer trDataPoint namesFor = do
+    let tr = NT.contramap DataPoint trDataPoint
     pure $ withNamesAppended namesFor tr

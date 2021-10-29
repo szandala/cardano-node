@@ -11,7 +11,6 @@ module Cardano.Logging.Tracer.DataPoint
 import           Control.Concurrent.STM.TVar (modifyTVar)
 import           Control.Monad.IO.Class
 import           Control.Monad.STM (atomically)
-import qualified Data.Aeson as AE
 import           Data.HashMap.Strict (insert)
 import           Data.List (intersperse)
 import           Data.Text (Text)
@@ -27,16 +26,16 @@ import           Cardano.Logging.Utils (uncurry3)
 
 ---------------------------------------------------------------------------
 
-dataPointTracer :: forall a m. (MonadIO m, AE.ToJSON a)
+dataPointTracer :: forall m. MonadIO m
   => DataPointStore -- TVar (HM.HashMap DataPointName DataPoint)
-  -> Trace m a
+  -> Trace m DataPoint
 dataPointTracer dataPointStore =
     Trace $ T.arrow $ T.emit $ uncurry3 output
   where
     output ::
          LoggingContext
       -> Maybe TraceControl
-      -> a
+      -> DataPoint
       -> m ()
     output LoggingContext {..} Nothing val =
       liftIO $ atomically $ do
@@ -44,7 +43,7 @@ dataPointTracer dataPointStore =
           dataPointStore
           (insert
             (nameSpaceToText lcNamespace)
-                      (DataPoint val))
+            val)
     output LoggingContext {} (Just Reset) _msg = liftIO $ do
       pure ()
     output _lk (Just _c@Document {}) _val = do
