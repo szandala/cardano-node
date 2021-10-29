@@ -22,13 +22,13 @@ import qualified Ouroboros.Consensus.Storage.ChainDB as ChainDB
 import qualified Ouroboros.Consensus.Storage.LedgerDB.OnDisk as LedgerDB
 
 data ReplayBlockStats = ReplayBlockStats
-  { rpsCount    :: Int
-  , rpsProgress :: Double
+  { rpsDisplay      :: Bool
+  , rpsProgress     :: Double
+  , rpsLastProgress :: Double
   }
 
 emptyReplayBlockStats :: ReplayBlockStats
-emptyReplayBlockStats = ReplayBlockStats 0 0.0
-
+emptyReplayBlockStats = ReplayBlockStats False 0.0 0.0
 instance LogFormatting ReplayBlockStats where
   forMachine _dtal ReplayBlockStats {..} =
     mkObject
@@ -62,8 +62,7 @@ withReplayedBlock tr =
     in foldMTraceM replayBlockStats emptyReplayBlockStats tr''
   where
     filterFunction(_, Just _, _) = True
-    filterFunction(_, Nothing, ReplayBlockStats {..}) =
-      rpsCount `mod` 1000 == 0
+    filterFunction(_, Nothing, ReplayBlockStats {..}) = rpsDisplay
 
 replayBlockStats :: MonadIO m
   => ReplayBlockStats
@@ -76,5 +75,8 @@ replayBlockStats ReplayBlockStats {..} _context _mbCtrl
       let slotno = toInteger $ unSlotNo (realPointSlot pt)
           endslot = toInteger $ withOrigin 0 unSlotNo (pointSlot replayTo)
           progress' = (fromInteger slotno * 100.0) / fromInteger (max slotno endslot)
-      pure (ReplayBlockStats (rpsCount + 1) progress')
+      pure $ if (progress' == 0.0 && not rpsDisplay)
+                || ((progress' - rpsLastProgress) > 1.0)
+                then ReplayBlockStats True progress' progress'
+                else ReplayBlockStats False progress' rpsLastProgress
 replayBlockStats st@ReplayBlockStats {} _context _mbCtrl _ = pure st
