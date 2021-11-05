@@ -8,21 +8,22 @@ module Cardano.Logging.Tracer.Composed (
   , documentTracer
   ) where
 
-import           Data.Aeson.Types                 (ToJSON)
-import           Data.Maybe                       (fromMaybe)
+import           Control.Exception (catch, SomeException)
+import           Data.Aeson.Types (ToJSON)
+import           Data.Maybe (fromMaybe)
 import           Data.Text
-import           Data.Text.Lazy.Builder           as TB
+import           Data.Text.Lazy.Builder as TB
 
-import           DataPoint.Forward.Utils          (DataPoint (..))
+import           DataPoint.Forward.Utils (DataPoint (..))
 
 import           Cardano.Logging.Configuration
+import           Cardano.Logging.DocuGenerator
 import           Cardano.Logging.Formatter
 import           Cardano.Logging.FrequencyLimiter (LimitingMessage (..))
 import           Cardano.Logging.Trace
 import           Cardano.Logging.Types
-import           Cardano.Logging.DocuGenerator
 
-import qualified Control.Tracer                   as NT
+import qualified Control.Tracer as NT
 
 data MessageOrLimit m = Message m | Limit LimitingMessage
 
@@ -143,5 +144,15 @@ documentTracer ::
   -> Documented a
   -> IO [(Namespace, TB.Builder)]
 documentTracer trConfig trace trDoc = do
-    configureTracers trConfig trDoc [trace]
-    documentMarkdown trDoc [trace]
+    res <- catch (do
+              configureTracers trConfig trDoc [trace]
+              pure True)
+          (\(e :: SomeException) -> do
+            putStrLn $ "Configuration exception" <> show e <> show trDoc
+            pure False)
+    if res
+      then  catch (documentMarkdown trDoc [trace])
+              (\(e :: SomeException) -> do
+                putStrLn $ "Documentation exception" <> show e <> show trDoc
+                pure [])
+      else pure []

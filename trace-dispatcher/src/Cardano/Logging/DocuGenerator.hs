@@ -8,22 +8,26 @@ module Cardano.Logging.DocuGenerator (
   , addFiltered
   , addLimiter
   , docTracer
+  , anyProto
 ) where
 
 import           Cardano.Logging.Types
-import           Control.Monad.IO.Class     (MonadIO, liftIO)
-import qualified Control.Tracer             as T
-import           Data.IORef                 (modifyIORef, newIORef, readIORef)
-import           Data.List                  (intersperse, nub, sortBy)
-import qualified Data.Map                   as Map
-import           Data.Text                  (Text)
+import           Control.Exception (catch, SomeException)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
+import qualified Control.Tracer as T
+import           Data.IORef (modifyIORef, newIORef, readIORef)
+import           Data.List (intersperse, nub, sortBy)
+import qualified Data.Map as Map
+import           Data.Text (Text, pack)
 import           Data.Text.Internal.Builder (toLazyText)
-import           Data.Text.Lazy             (toStrict)
-import           Data.Text.Lazy.Builder     (Builder, fromString, fromText,
-                                             singleton)
-import           Data.Time                  (getZonedTime)
+import           Data.Text.Lazy (toStrict)
+import           Data.Text.Lazy.Builder (Builder, fromString, fromText,
+                     singleton)
+import           Data.Time (getZonedTime)
 
 
+anyProto :: a
+anyProto = undefined
 
 docTracer :: MonadIO m
   => BackendConfig
@@ -41,30 +45,39 @@ docTracer backendConfig = liftIO $ do
       docIt backendConfig (FormattedMachine "") (lk, Just c, msg)
     output (_, _, _) = pure ()
 
-documentTracers :: MonadIO m => Documented a -> [Trace m a] -> m DocCollector
+documentTracers :: Documented a -> [Trace IO a] -> IO DocCollector
 documentTracers (Documented documented) tracers = do
     let docIdx = zip documented [0..]
     coll <- fmap DocCollector (liftIO $ newIORef Map.empty)
     mapM_ (docTrace docIdx coll) tracers
     pure coll
   where
-    docTrace docIdx docColl (Trace tr) =
+    docTrace docIdx dc@(DocCollector docColl) (Trace tr) =
       mapM_
-        (\ (DocMsg {..}, idx) -> do
-          T.traceWith tr (emptyLoggingContext,
-                          Just (Document idx dmMarkdown dmMetricsMD docColl),
-                                dmPrototype))
+        (\ (DocMsg {..}, idx) -> catch (
+            T.traceWith tr (emptyLoggingContext,
+                            Just (Document idx dmMarkdown dmMetricsMD dc), dmPrototype))
+            (\ (ex :: SomeException) ->
+                modifyIORef docColl
+                  (\ docMap ->
+                    Map.insert
+                      idx
+                      (case Map.lookup idx docMap of
+                        Just e  -> e { ldDoc = ldDoc e <> "Error generating doc" <> (pack . show) ex}
+                        Nothing -> emptyLogDoc ("Error generating doc" <> (pack . show) ex) [])
+                      docMap)))
         docIdx
+
 
 addFiltered :: MonadIO m => TraceControl -> Maybe SeverityF -> m ()
 addFiltered (Document idx mdText mdMetrics (DocCollector docRef)) (Just sev) = do
   liftIO $ modifyIORef docRef (\ docMap ->
       Map.insert
         idx
-        ((\e -> e { ldFiltered = sev : ldFiltered e})
+        ((\e -> e { ldFiltered = seq sev (sev : ldFiltered e)})
           (case Map.lookup idx docMap of
                         Just e  -> e
-                        Nothing -> emptyLogDoc mdText mdMetrics))
+                        Nothing -> seq mdText (seq mdMetrics (emptyLogDoc mdText mdMetrics))))
         docMap)
 addFiltered _ _ = pure ()
 
@@ -73,10 +86,10 @@ addLimiter (Document idx mdText mdMetrics (DocCollector docRef)) (ln, lf) = do
   liftIO $ modifyIORef docRef (\ docMap ->
       Map.insert
         idx
-        ((\e -> e { ldLimiter = (ln, lf) : ldLimiter e})
+        ((\e -> e { ldLimiter = seq ln (seq lf ((ln, lf) : ldLimiter e))})
           (case Map.lookup idx docMap of
                         Just e  -> e
-                        Nothing -> emptyLogDoc mdText mdMetrics))
+                        Nothing -> seq mdText (seq mdMetrics (emptyLogDoc mdText mdMetrics))))
         docMap)
 addLimiter _ _ = pure ()
 
@@ -90,21 +103,23 @@ docIt backend formattedMessage (LoggingContext {..},
   liftIO $ modifyIORef docRef (\ docMap ->
       Map.insert
         idx
-        ((\e -> e { ldBackends  = (backend, formattedMessage) : ldBackends e
-                  , ldNamespace = lcNamespace : ldNamespace e
+        ((\e -> e { ldBackends  = seq backend (seq formattedMessage
+                                    ((backend, formattedMessage) : ldBackends e))
+                  , ldNamespace = seq lcNamespace
+                                    (lcNamespace : ldNamespace e)
                   , ldSeverity  = case lcSeverity of
                                     Nothing -> ldSeverity e
-                                    Just s  -> s : ldSeverity e
+                                    Just s  -> seq s (s : ldSeverity e)
                   , ldPrivacy   = case lcPrivacy of
                                     Nothing -> ldPrivacy e
-                                    Just s  -> s : ldPrivacy e
+                                    Just p  -> seq p (p : ldPrivacy e)
                   , ldDetails   = case lcDetails of
                                     Nothing -> ldDetails e
-                                    Just s  -> s : ldDetails e
+                                    Just d  -> seq d (d : ldDetails e)
                   })
           (case Map.lookup idx docMap of
                         Just e  -> e
-                        Nothing -> emptyLogDoc mdText mdMetrics))
+                        Nothing -> seq mdText (seq mdMetrics (emptyLogDoc mdText mdMetrics))))
         docMap)
 
 buildersToText :: [(Namespace, Builder)] -> TraceConfig -> IO Text
@@ -118,10 +133,10 @@ buildersToText builderList configuration = do
       ts      = fromString $ "\nGenerated at " <> show time <> "."
   pure $ toStrict $ toLazyText (content <> config <> numbers <> ts)
 
-documentMarkdown :: MonadIO m =>
+documentMarkdown ::
      Documented a
-  -> [Trace m a]
-  -> m [(Namespace, Builder)]
+  -> [Trace IO a]
+  -> IO [(Namespace, Builder)]
 documentMarkdown (Documented documented) tracers = do
     DocCollector docRef <- documentTracers (Documented documented) tracers
     items <- fmap Map.toList (liftIO (readIORef docRef))
@@ -275,8 +290,3 @@ asCode b = singleton '`' <> b <> singleton '`'
 
 betweenLines :: Builder -> Builder
 betweenLines b = fromText "\n***\n" <> b <> fromText "\n***\n"
-
-_listIndex :: [a] -> Int -> Maybe a
-_listIndex l i = if i >= length l
-                  then Nothing
-                  else Just (l !! i)
