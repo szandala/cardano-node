@@ -25,9 +25,7 @@ module Cardano.TraceDispatcher.Network.Docu
   ) where
 
 import           Cardano.Prelude
-import qualified Codec.CBOR.Term as CBOR
 import           Control.Monad.Class.MonadTime
-import qualified Data.Map as Map
 import           Data.Time.Clock (secondsToDiffTime)
 import qualified Network.DNS as DNS
 import           Network.Mux (MiniProtocolNum (..), MuxBearerState (..),
@@ -47,7 +45,6 @@ import qualified Ouroboros.Network.BlockFetch.ClientState as BlockFetch
 import           Ouroboros.Network.Codec (AnyMessageAndAgency (..))
 import qualified Ouroboros.Network.Diffusion as ND
 import           Ouroboros.Network.Driver.Simple (TraceSendRecv (..))
-import           Ouroboros.Network.NodeToClient (NodeToClientVersion (..))
 import qualified Ouroboros.Network.NodeToClient as NtC
 import           Ouroboros.Network.NodeToNode (ErrorPolicyTrace (..),
                      WithAddr (..))
@@ -70,56 +67,17 @@ import           Ouroboros.Network.Subscription.Worker (ConnectResult (..),
                      LocalAddresses (..), SubscriptionTrace (..))
 
 
-protoHeader :: header
-protoHeader = undefined
-
-protoPoint :: Point blk
-protoPoint = undefined
-
-protoTip :: Tip blk
-protoTip = undefined
-
 protoPeer :: peer
 protoPeer = unsafeCoerce (NtN.ConnectionId protoSockAddr protoSockAddr)
-
-protoStok :: stok
-protoStok = undefined
-
-protoTx :: tx
-protoTx = undefined
-
-protoAcquireFailure :: LSQ.AcquireFailure
-protoAcquireFailure = undefined
-
-protoChainRange :: ChainRange point
-protoChainRange = undefined
-
-protoTokBlockingStyle :: TXS.TokBlockingStyle blocking
-protoTokBlockingStyle = undefined
-
-protoBlockingReplyList :: TXS.BlockingReplyList blocking (txid, TXS.TxSizeInBytes)
-protoBlockingReplyList = undefined
-
-protoTxId :: txid
-protoTxId = undefined
 
 protoLocalAdresses :: LocalAddresses addr
 protoLocalAdresses = LocalAddresses Nothing Nothing Nothing
 
-protoRes :: ConnectResult
-protoRes = ConnectSuccess
-
 protoDiffTime :: DiffTime
 protoDiffTime = secondsToDiffTime 1
 
-protoException :: NoMethodError
-protoException = undefined
-
 protoDomain :: DNS.Domain
 protoDomain = "www.example.org"
-
-protoDNSError :: DNS.DNSError
-protoDNSError = undefined
 
 protoLocalAdress :: LocalAddress
 protoLocalAdress = LocalAddress "loopback"
@@ -131,9 +89,6 @@ protoMuxSDUHeader = MuxSDUHeader {
     , mhDir       = InitiatorDir
     , mhLength    = 1
     }
-
-protoTime :: Time
-protoTime = undefined
 
 protoMuxBearerState :: MuxBearerState
 protoMuxBearerState = Mature
@@ -147,21 +102,6 @@ protoMiniProtocolDir = InitiatorDir
 protoSomeException :: SomeException
 protoSomeException = SomeException (AssertionFailed "just fooled")
 
-protoNodeToClientVersion :: NodeToClientVersion
-protoNodeToClientVersion = NodeToClientV_8
-
-protoNodeToNodeVersion :: NtN.NodeToNodeVersion
-protoNodeToNodeVersion = NtN.NodeToNodeV_1
-
-protoCBORTerm :: CBOR.Term
-protoCBORTerm = undefined
-
-protoRefuseReason :: HS.RefuseReason NtN.NodeToNodeVersion
-protoRefuseReason = HS.Refused protoNodeToNodeVersion "hello"
-
-protoLocalRefuseReason :: HS.RefuseReason NtC.NodeToClientVersion
-protoLocalRefuseReason = HS.Refused protoNodeToClientVersion "hello"
-
 protoSockAddr :: Socket.SockAddr
 protoSockAddr = Socket.SockAddrUnix "loopback"
 
@@ -171,6 +111,7 @@ protoLocalAddress = LocalAddress "loopback"
 protoFilePath :: FilePath
 protoFilePath = "loopback"
 
+{-# NOINLINE protoFileDescriptor #-}
 protoFileDescriptor :: FileDescriptor
 protoFileDescriptor =
   unsafePerformIO $ do
@@ -185,71 +126,71 @@ docTChainSync :: Documented (BlockFetch.TraceLabelPeer peer (TraceSendRecv
     (ChainSync x (Point blk) (Tip blk))))
 docTChainSync = Documented [
       DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok MsgRequestNext)))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto MsgRequestNext)))
         []
         "Request the next update from the producer. The response can be a roll\
         \forward, a roll back or wait."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok MsgAwaitReply)))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto MsgAwaitReply)))
         []
         "Acknowledge the request but require the consumer to wait for the next\
         \update. This means that the consumer is synced with the producer, and\
         \the producer is waiting for its own chain state to change."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok MsgAwaitReply)))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto MsgAwaitReply)))
         []
         "Tell the consumer to extend their chain with the given header.\
         \ \
         \The message also tells the consumer about the head point of the producer."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok
-            (MsgRollForward protoHeader protoTip))))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto
+            (MsgRollForward anyProto anyProto))))
         []
         "Tell the consumer to extend their chain with the given header.\
         \ \
         \The message also tells the consumer about the head point of the producer."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok
-            (MsgRollBackward protoPoint protoTip))))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto
+            (MsgRollBackward anyProto anyProto))))
         []
         "Tell the consumer to roll back to a given point on their chain.\
         \\
         \The message also tells the consumer about the head point of the producer."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok
-            (MsgFindIntersect [protoPoint]))))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto
+            (MsgFindIntersect [anyProto]))))
         []
         "Ask the producer to try to find an improved intersection point between\
         \the consumer and producer's chains. The consumer sends a sequence of\
         \points and it is up to the producer to find the first intersection point\
         \on its chain and send it back to the consumer."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok
-            (MsgIntersectFound protoPoint protoTip))))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto
+            (MsgIntersectFound anyProto anyProto))))
         []
         "The reply to the consumer about an intersection found.\
         \The consumer can decide weather to send more points.\
         \\
         \The message also tells the consumer about the head point of the producer."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok
-            (MsgIntersectNotFound protoTip))))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto
+            (MsgIntersectNotFound anyProto))))
         []
         "The reply to the consumer that no intersection was found: none of the\
         \points the consumer supplied are on the producer chain.\
         \\
         \The message also tells the consumer about the head point of the producer."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto
             MsgDone)))
         []
         "We have to explain to the framework what our states mean, in terms of\
@@ -267,25 +208,25 @@ docTTxSubmission :: Documented
             (GenTx blk) (ApplyTxErr blk))))
 docTTxSubmission = Documented [
       DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok (LTS.MsgSubmitTx protoTx))))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto (LTS.MsgSubmitTx anyProto))))
         []
         "The client submits a single transaction and waits a reply."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok LTS.MsgAcceptTx)))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto LTS.MsgAcceptTx)))
         []
         "The server can reply to inform the client that it has accepted the\
         \transaction."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok (LTS.MsgRejectTx undefined))))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto (LTS.MsgRejectTx anyProto))))
         []
         "The server can reply to inform the client that it has rejected the\
         \transaction. A reason for the rejection is included."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok LTS.MsgDone)))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto LTS.MsgDone)))
         []
         "The client can terminate the protocol."
   ]
@@ -296,8 +237,8 @@ docTStateQuery :: Documented
          (LSQ.LocalStateQuery blk (Point blk) query)))
 docTStateQuery = Documented [
       DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok (LSQ.MsgAcquire Nothing))))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto (LSQ.MsgAcquire Nothing))))
         []
         "The client requests that the state as of a particular recent point on\
         \the server's chain (within K of the tip) be made available to query,\
@@ -307,44 +248,44 @@ docTStateQuery = Documented [
         \will be acquired.  For previous versions of the protocol 'point' must be\
         \given."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
-          (TraceSendMsg (AnyMessageAndAgency protoStok LSQ.MsgAcquired)))
+        (BlockFetch.TraceLabelPeer anyProto
+          (TraceSendMsg (AnyMessageAndAgency anyProto LSQ.MsgAcquired)))
         []
         "The server can confirm that it has the state at the requested point."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (LSQ.MsgFailure protoAcquireFailure))))
+            (AnyMessageAndAgency anyProto
+              (LSQ.MsgFailure anyProto))))
         []
         "The server can report that it cannot obtain the state for the\
         \requested point."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (LSQ.MsgQuery (undefined :: query result)))))
+            (AnyMessageAndAgency anyProto
+              (LSQ.MsgQuery anyProto))))
         []
         "The client can perform queries on the current acquired state."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (LSQ.MsgResult (undefined :: query result) (undefined :: result)))))
+            (AnyMessageAndAgency anyProto
+              (LSQ.MsgResult anyProto anyProto))))
         []
         "The server must reply with the queries."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
+            (AnyMessageAndAgency anyProto
               LSQ.MsgRelease)))
         []
         "The client can instruct the server to release the state. This lets\
         \the server free resources."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
+            (AnyMessageAndAgency anyProto
               (LSQ.MsgReAcquire Nothing))))
         []
         "This is like 'MsgAcquire' but for when the client already has a\
@@ -359,9 +300,9 @@ docTStateQuery = Documented [
         \will be acquired.  For previous versions of the protocol 'point' must be\
         \given."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
+            (AnyMessageAndAgency anyProto
               LSQ.MsgDone)))
         []
         "The client can terminate the protocol."
@@ -373,44 +314,44 @@ docTBlockFetch :: Documented
          (BlockFetch x (Point blk))))
 docTBlockFetch = Documented [
       DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (MsgRequestRange protoChainRange))))
+            (AnyMessageAndAgency anyProto
+              (MsgRequestRange anyProto))))
         []
         "Request range of blocks."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
+            (AnyMessageAndAgency anyProto
               MsgStartBatch)))
         []
         "Start block streaming."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
+            (AnyMessageAndAgency anyProto
               MsgNoBlocks)))
         []
         "Respond that there are no blocks."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
+            (AnyMessageAndAgency anyProto
               (MsgBlock undefined))))
         []
         "Stream a single block."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
+            (AnyMessageAndAgency anyProto
               MsgBatchDone)))
         []
         "End of block streaming."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
+            (AnyMessageAndAgency anyProto
               MsgClientDone)))
         []
         "Client termination message."
@@ -422,10 +363,10 @@ docTTxSubmissionNode :: Documented
       (TXS.TxSubmission (GenTxId blk) (GenTx blk))))
 docTTxSubmissionNode = Documented [
       DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (TXS.MsgRequestTxIds protoTokBlockingStyle 1 1))))
+            (AnyMessageAndAgency anyProto
+              (TXS.MsgRequestTxIds anyProto 1 1))))
         []
         "Request a non-empty list of transaction identifiers from the client,\
         \and confirm a number of outstanding transaction identifiers.\
@@ -465,10 +406,10 @@ docTTxSubmissionNode = Documented [
         \* The non-blocking case must be used when there are non-zero remaining\
         \  unacknowledged transactions."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (TXS.MsgReplyTxIds protoBlockingReplyList))))
+            (AnyMessageAndAgency anyProto
+              (TXS.MsgReplyTxIds anyProto))))
         []
         "Reply with a list of transaction identifiers for available\
         \transactions, along with the size of each transaction.\
@@ -485,10 +426,10 @@ docTTxSubmissionNode = Documented [
         \the order in which they are submitted to the mempool, to preserve\
         \dependent transactions."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (TXS.MsgRequestTxs [protoTxId]))))
+            (AnyMessageAndAgency anyProto
+              (TXS.MsgRequestTxs [anyProto]))))
         []
         "Request one or more transactions corresponding to the given \
         \transaction identifiers. \
@@ -503,10 +444,10 @@ docTTxSubmissionNode = Documented [
         \It is an error to ask for transaction identifiers that are not \
         \outstanding or that were already asked for."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (TXS.MsgReplyTxs [protoTx]))))
+            (AnyMessageAndAgency anyProto
+              (TXS.MsgReplyTxs [anyProto]))))
         []
         "Reply with the requested transactions, or implicitly discard.\
         \\
@@ -519,9 +460,9 @@ docTTxSubmissionNode = Documented [
         \that this is no guarantee that the transaction is invalid, it may still \
         \be valid and available from another peer)."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
+            (AnyMessageAndAgency anyProto
               TXS.MsgDone)))
         []
         "Termination message, initiated by the client when the server is \
@@ -535,17 +476,17 @@ docTTxSubmission2Node :: Documented
       (TXS.TxSubmission2 (GenTxId blk) (GenTx blk))))
 docTTxSubmission2Node = Documented [
       DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
+            (AnyMessageAndAgency anyProto
               MsgHello)))
         []
         "Client side hello message."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (MsgTalk (TXS.MsgRequestTxIds protoTokBlockingStyle 1 1)))))
+            (AnyMessageAndAgency anyProto
+              (MsgTalk (TXS.MsgRequestTxIds anyProto 1 1)))))
         []
         "Request a non-empty list of transaction identifiers from the client, \
         \and confirm a number of outstanding transaction identifiers. \
@@ -585,10 +526,10 @@ docTTxSubmission2Node = Documented [
         \* The non-blocking case must be used when there are non-zero remaining \
         \  unacknowledged transactions."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (MsgTalk (TXS.MsgReplyTxIds protoBlockingReplyList)))))
+            (AnyMessageAndAgency anyProto
+              (MsgTalk (TXS.MsgReplyTxIds anyProto)))))
         []
         "Reply with a list of transaction identifiers for available\
         \transactions, along with the size of each transaction.\
@@ -605,10 +546,10 @@ docTTxSubmission2Node = Documented [
         \the order in which they are submitted to the mempool, to preserve\
         \dependent transactions."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (MsgTalk (TXS.MsgRequestTxs [protoTxId])))))
+            (AnyMessageAndAgency anyProto
+              (MsgTalk (TXS.MsgRequestTxs [anyProto])))))
         []
         "Request one or more transactions corresponding to the given \
         \transaction identifiers. \
@@ -623,10 +564,10 @@ docTTxSubmission2Node = Documented [
         \It is an error to ask for transaction identifiers that are not\
         \outstanding or that were already asked for."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (MsgTalk (TXS.MsgReplyTxs [protoTx])))))
+            (AnyMessageAndAgency anyProto
+              (MsgTalk (TXS.MsgReplyTxs [anyProto])))))
         []
         "Reply with the requested transactions, or implicitly discard.\
         \\
@@ -639,9 +580,9 @@ docTTxSubmission2Node = Documented [
         \that this is no guarantee that the transaction is invalid, it may still\
         \be valid and available from another peer)."
     , DocMsg
-        (BlockFetch.TraceLabelPeer protoPeer
+        (BlockFetch.TraceLabelPeer anyProto
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
+            (AnyMessageAndAgency anyProto
               (MsgTalk TXS.MsgDone))))
         []
         "Termination message, initiated by the client when the server is\
@@ -664,27 +605,27 @@ docDNSSubscription = Documented $ map withDomainName (undoc docSubscription)
 docSubscription :: Documented (SubscriptionTrace Socket.SockAddr)
 docSubscription = Documented [
       DocMsg
-        (SubscriptionTraceConnectStart protoSockAddr)
+        (SubscriptionTraceConnectStart anyProto)
         []
         "Connection Attempt Start with destination."
     , DocMsg
-        (SubscriptionTraceConnectEnd protoSockAddr protoRes)
+        (SubscriptionTraceConnectEnd anyProto ConnectSuccess)
         []
         "Connection Attempt end with destination and outcome."
     , DocMsg
-        (SubscriptionTraceSocketAllocationException protoSockAddr protoException)
+        (SubscriptionTraceSocketAllocationException anyProto protoSomeException)
         []
         "Socket Allocation Exception with destination and the exception."
     , DocMsg
-        (SubscriptionTraceConnectException protoSockAddr protoException)
+        (SubscriptionTraceConnectException anyProto protoSomeException)
         []
         "Connection Attempt Exception with destination and exception."
     , DocMsg
-        (SubscriptionTraceTryConnectToPeer protoSockAddr)
+        (SubscriptionTraceTryConnectToPeer anyProto)
         []
         "Trying to connect to peer with address."
     , DocMsg
-        (SubscriptionTraceSkippingPeer protoSockAddr)
+        (SubscriptionTraceSkippingPeer anyProto)
         []
         "Skipping peer with address."
     , DocMsg
@@ -700,7 +641,7 @@ docSubscription = Documented [
         []
         "Failed to start all required subscriptions."
     , DocMsg
-        (SubscriptionTraceSubscriptionWaitingNewConnection protoDiffTime)
+        (SubscriptionTraceSubscriptionWaitingNewConnection anyProto)
         []
         "Waiting delay time before attempting a new connection."
     , DocMsg
@@ -708,16 +649,16 @@ docSubscription = Documented [
         []
         "Starting Subscription Worker with a valency."
     , DocMsg
-        (SubscriptionTraceRestart protoDiffTime 1 2)
+        (SubscriptionTraceRestart anyProto 1 2)
         []
         "Restarting Subscription after duration with desired valency and\
         \ current valency."
     , DocMsg
-        (SubscriptionTraceConnectionExist protoSockAddr)
+        (SubscriptionTraceConnectionExist anyProto)
         []
         "Connection exists to destination."
     , DocMsg
-        (SubscriptionTraceUnsupportedRemoteAddr protoSockAddr)
+        (SubscriptionTraceUnsupportedRemoteAddr anyProto)
         []
         "Unsupported remote target address."
     , DocMsg
@@ -725,34 +666,36 @@ docSubscription = Documented [
         []
         "Missing local address."
     , DocMsg
-        (SubscriptionTraceApplicationException protoSockAddr protoException)
+        (SubscriptionTraceApplicationException anyProto protoSomeException)
         []
         "Application Exception occured."
     , DocMsg
-        (SubscriptionTraceAllocateSocket protoSockAddr)
+        (SubscriptionTraceAllocateSocket anyProto)
         []
         "Allocate socket to address."
     , DocMsg
-        (SubscriptionTraceCloseSocket protoSockAddr)
+        (SubscriptionTraceCloseSocket anyProto)
         []
         "Closed socket to address."
   ]
+
+-- WithDomainName has strict constructors
 
 docDNSResolver :: Documented (WithDomainName DnsTrace)
 docDNSResolver = Documented [
       DocMsg
         (WithDomainName protoDomain
-          (DnsTraceLookupException protoSomeException))
+          (DnsTraceLookupException anyProto))
         []
         "A DNS lookup exception occured."
     , DocMsg
         (WithDomainName protoDomain
-          (DnsTraceLookupAError protoDNSError))
+          (DnsTraceLookupAError anyProto))
         []
         "A lookup failed with an error."
     , DocMsg
         (WithDomainName protoDomain
-          (DnsTraceLookupAAAAError protoDNSError))
+          (DnsTraceLookupAAAAError anyProto))
         []
         "AAAA lookup failed with an error."
     , DocMsg
@@ -772,12 +715,12 @@ docDNSResolver = Documented [
         "Returning IPv6 address first."
     , DocMsg
         (WithDomainName protoDomain
-          (DnsTraceLookupAResult [protoSockAddr]))
+          (DnsTraceLookupAResult [anyProto]))
         []
         "Lookup A result."
     , DocMsg
         (WithDomainName protoDomain
-          (DnsTraceLookupAAAAResult [protoSockAddr]))
+          (DnsTraceLookupAAAAResult [anyProto]))
         []
         "Lookup AAAA result."
     ]
@@ -788,21 +731,23 @@ docErrorPolicy = docErrorPolicy' protoSockAddr
 docLocalErrorPolicy :: Documented (WithAddr LocalAddress ErrorPolicyTrace)
 docLocalErrorPolicy = docErrorPolicy' protoLocalAdress
 
+-- WithAddr has strict constructors
+
 docErrorPolicy' :: adr -> Documented (WithAddr adr ErrorPolicyTrace)
 docErrorPolicy' adr = Documented [
       DocMsg
         (WithAddr adr
-          (ErrorPolicySuspendPeer Nothing protoDiffTime protoDiffTime))
+          (ErrorPolicySuspendPeer anyProto protoDiffTime protoDiffTime))
         []
         "Suspending peer with a given exception."
     , DocMsg
         (WithAddr adr
-          (ErrorPolicySuspendConsumer Nothing protoDiffTime))
+          (ErrorPolicySuspendConsumer anyProto protoDiffTime))
         []
         "Suspending consumer."
     , DocMsg
         (WithAddr adr
-          (ErrorPolicyLocalNodeError undefined))
+          (ErrorPolicyLocalNodeError anyProto))
         []
         "caught a local exception."
     , DocMsg
@@ -827,18 +772,18 @@ docErrorPolicy' adr = Documented [
         "Resume producer."
     , DocMsg
         (WithAddr adr
-          (ErrorPolicyUnhandledApplicationException undefined))
+          (ErrorPolicyUnhandledApplicationException anyProto))
         []
         "An application throwed an exception, which was not handled."
     , DocMsg
         (WithAddr adr
-          (ErrorPolicyUnhandledConnectionException undefined))
+          (ErrorPolicyUnhandledConnectionException anyProto))
         []
         "'connect' throwed an exception, which was not handled by any\
         \ 'ErrorPolicy'."
     , DocMsg
         (WithAddr adr
-          (ErrorPolicyAcceptException undefined))
+          (ErrorPolicyAcceptException anyProto))
         []
         "'accept' throwed an exception."
     ]
@@ -846,7 +791,7 @@ docErrorPolicy' adr = Documented [
 docAcceptPolicy :: Documented NtN.AcceptConnectionsPolicyTrace
 docAcceptPolicy = Documented [
       DocMsg
-        (NtN.ServerTraceAcceptConnectionRateLimiting protoDiffTime 2)
+        (NtN.ServerTraceAcceptConnectionRateLimiting anyProto 2)
         []
         "Rate limiting accepting connections,\
         \ delaying next accept for given time, currently serving n connections."
@@ -856,6 +801,9 @@ docAcceptPolicy = Documented [
         "Hard rate limit reached,\
         \ waiting until the number of connections drops below n."
   ]
+
+-- WithMuxBearer has strict constructors
+-- Eveything strict in MuxTrace
 
 docMux :: Documented (WithMuxBearer peer MuxTrace)
 docMux = Documented [
@@ -871,7 +819,7 @@ docMux = Documented [
         "Bearer receive header end."
     , DocMsg
         (WithMuxBearer protoPeer
-          (MuxTraceRecvDeltaQObservation protoMuxSDUHeader protoTime))
+          (MuxTraceRecvDeltaQObservation protoMuxSDUHeader anyProto))
         []
         "Bearer DeltaQ observation."
     , DocMsg
@@ -997,24 +945,24 @@ docHandshake = Documented [
       DocMsg
         (WithMuxBearer protoPeer
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (HS.MsgProposeVersions Map.empty))))
+            (AnyMessageAndAgency anyProto
+              (HS.MsgProposeVersions anyProto))))
         []
         "Propose versions together with version parameters.  It must be\
         \ encoded to a sorted list.."
     , DocMsg
         (WithMuxBearer protoPeer
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (HS.MsgAcceptVersion protoNodeToNodeVersion protoCBORTerm))))
+            (AnyMessageAndAgency anyProto
+              (HS.MsgAcceptVersion anyProto anyProto))))
         []
         "The remote end decides which version to use and sends chosen version.\
         \The server is allowed to modify version parameters."
     , DocMsg
         (WithMuxBearer protoPeer
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (HS.MsgRefuse protoRefuseReason))))
+            (AnyMessageAndAgency anyProto
+              (HS.MsgRefuse anyProto))))
         []
         "It refuses to run any version."
     ]
@@ -1024,28 +972,29 @@ docLocalHandshake = Documented [
       DocMsg
         (WithMuxBearer protoPeer
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (HS.MsgProposeVersions Map.empty))))
+            (AnyMessageAndAgency anyProto
+              (HS.MsgProposeVersions anyProto))))
         []
         "Propose versions together with version parameters.  It must be\
         \ encoded to a sorted list.."
     , DocMsg
         (WithMuxBearer protoPeer
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (HS.MsgAcceptVersion protoNodeToClientVersion protoCBORTerm))))
+            (AnyMessageAndAgency anyProto
+              (HS.MsgAcceptVersion anyProto anyProto))))
         []
         "The remote end decides which version to use and sends chosen version.\
         \The server is allowed to modify version parameters."
     , DocMsg
         (WithMuxBearer protoPeer
           (TraceSendMsg
-            (AnyMessageAndAgency protoStok
-              (HS.MsgRefuse protoLocalRefuseReason))))
+            (AnyMessageAndAgency anyProto
+              (HS.MsgRefuse anyProto))))
         []
         "It refuses to run any version."
     ]
 
+-- Everything strict in DiffusionInitializationTracer
 docDiffusionInit :: Documented ND.DiffusionInitializationTracer
 docDiffusionInit = Documented [
     DocMsg

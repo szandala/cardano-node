@@ -5,21 +5,24 @@ module Cardano.Logging.Tracer.Composed (
   , mkCardanoTracer'
   , mkDataPointTracer
   , MessageOrLimit(..)
+  , documentTracer
   ) where
 
-import           Data.Maybe (fromMaybe)
+import           Data.Aeson.Types                 (ToJSON)
+import           Data.Maybe                       (fromMaybe)
 import           Data.Text
-import           Data.Aeson.Types(ToJSON)
+import           Data.Text.Lazy.Builder           as TB
 
-import           DataPoint.Forward.Utils (DataPoint(..))
+import           DataPoint.Forward.Utils          (DataPoint (..))
 
 import           Cardano.Logging.Configuration
 import           Cardano.Logging.Formatter
 import           Cardano.Logging.FrequencyLimiter (LimitingMessage (..))
 import           Cardano.Logging.Trace
 import           Cardano.Logging.Types
+import           Cardano.Logging.DocuGenerator
 
-import qualified Control.Tracer as NT
+import qualified Control.Tracer                   as NT
 
 data MessageOrLimit m = Message m | Limit LimitingMessage
 
@@ -133,3 +136,12 @@ mkDataPointTracer :: forall dp. ToJSON dp
 mkDataPointTracer trDataPoint namesFor = do
     let tr = NT.contramap DataPoint trDataPoint
     pure $ withNamesAppended namesFor tr
+
+documentTracer ::
+     TraceConfig
+  -> Trace IO a
+  -> Documented a
+  -> IO [(Namespace, TB.Builder)]
+documentTracer trConfig trace trDoc = do
+    configureTracers trConfig trDoc [trace]
+    documentMarkdown trDoc [trace]

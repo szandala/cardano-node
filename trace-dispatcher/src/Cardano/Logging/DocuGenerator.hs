@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -14,7 +13,6 @@ module Cardano.Logging.DocuGenerator (
 import           Cardano.Logging.Types
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
 import qualified Control.Tracer             as T
-import           Data.Aeson.Text            (encodeToLazyText)
 import           Data.IORef                 (modifyIORef, newIORef, readIORef)
 import           Data.List                  (intersperse, nub, sortBy)
 import qualified Data.Map                   as Map
@@ -24,6 +22,8 @@ import           Data.Text.Lazy             (toStrict)
 import           Data.Text.Lazy.Builder     (Builder, fromString, fromText,
                                              singleton)
 import           Data.Time                  (getZonedTime)
+
+
 
 docTracer :: MonadIO m
   => BackendConfig
@@ -110,7 +110,6 @@ docIt backend formattedMessage (LoggingContext {..},
 buildersToText :: [(Namespace, Builder)] -> TraceConfig -> IO Text
 buildersToText builderList configuration = do
   time <- getZonedTime
---  tz   <- getTimeZone
   let sortedBuilders = sortBy (\ (l,_) (r,_) -> compare l r) builderList
       num = length builderList
       content = mconcat $ intersperse (fromText "\n\n") (map snd sortedBuilders)
@@ -138,7 +137,6 @@ documentMarkdown (Documented documented) tracers = do
     documentItem (_idx, ld@LogDoc {..}) = mconcat $ intersperse (fromText "\n\n")
       [ namespacesBuilder (nub ldNamespace)
       , betweenLines (fromText ldDoc)
---      , representationBuilder (documented `listIndex` idx)
       , propertiesBuilder ld
       , configBuilder ld
       , metricsBuilder ldMetricsDoc (filter fMetrics (nub ldBackends))
@@ -153,56 +151,6 @@ documentMarkdown (Documented documented) tracers = do
     namespaceBuilder :: Namespace -> Builder
     namespaceBuilder ns = fromText "### " <>
       mconcat (intersperse (singleton '.') (map fromText ns))
-
-    _representationBuilder :: LogFormatting a => Maybe (DocMsg a) -> Builder
-    _representationBuilder Nothing = mempty
-    _representationBuilder (Just DocMsg {..}) = mconcat
-      $ intersperse (singleton '\n')
-        [case forHuman dmPrototype of
-          "" -> mempty
-          t  -> fromText "For human:\n" <> asCode (fromText t)
-        , let r1 = forMachine DMinimal dmPrototype
-              r2 = forMachine DNormal dmPrototype
-              r3 = forMachine DDetailed dmPrototype
-          in if r1 == mempty && r2 == mempty && r3 == mempty
-            then mempty
-              else if r1 == r2 && r2 == r3
-                then fromText "For machine:\n"
-                      <> asCode (fromText (toStrict (encodeToLazyText r1)))
-                else if r1 == r2
-                  then fromText "For machine regular:\n"
-                        <> asCode (fromText (toStrict (encodeToLazyText r2)))
-                        <> fromText "\nFor machine detailed: "
-                        <> asCode (fromText (toStrict (encodeToLazyText r3)))
-                  else if r2 == r3
-                    then fromText "For machine brief:\n"
-                          <> asCode (fromText (toStrict (encodeToLazyText r1)))
-                          <> fromText "\nFor machine regular:\n"
-                          <> asCode (fromText (toStrict (encodeToLazyText r2)))
-                    else fromText "For machine brief:\n"
-                          <> asCode (fromText (toStrict (encodeToLazyText r1)))
-                          <> fromText "\nFor machine regular:\n"
-                          <> asCode (fromText (toStrict (encodeToLazyText r2)))
-                          <> fromText "\nFor machine detailed:\n"
-                          <> asCode (fromText (toStrict (encodeToLazyText r3)))
-        , case asMetrics dmPrototype of
-            [] -> mempty
-            l -> mconcat
-                  (intersperse (singleton '\n')
-                    (map
-                      (\case
-                        (IntM name i) ->
-                          fromText "Integer metrics:\n"
-                          <> asCode (fromText name)
-                          <> singleton ' '
-                          <> fromString (show i)
-                        (DoubleM name i) ->
-                          fromText "Double metrics:\n"
-                          <> asCode (fromText name)
-                          <> singleton ' '
-                          <> fromString (show i))
-                      l))
-        ]
 
     propertiesBuilder :: LogDoc -> Builder
     propertiesBuilder LogDoc {..} =

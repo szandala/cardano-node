@@ -396,17 +396,17 @@ instance LogFormatting b => LogFormatting (Folding a b) where
 
 instance LogFormatting Double where
   forMachine _dtal d = mkObject [ "val" .= AE.String ((pack . show) d)]
-  forHuman d         = (pack . show) d
+  forHuman           = pack . show
   asMetrics d        = [DoubleM "" d]
 
 instance LogFormatting Int where
   forMachine _dtal i = mkObject [ "val" .= AE.String ((pack . show) i)]
-  forHuman i         = (pack . show) i
+  forHuman           = pack . show
   asMetrics i        = [IntM "" (fromIntegral i)]
 
 instance LogFormatting Integer where
   forMachine _dtal i = mkObject [ "val" .= AE.String ((pack . show) i)]
-  forHuman i         = (pack . show) i
+  forHuman           = pack . show
   asMetrics i        = [IntM "" i]
 
 ---------------------------------------------------------------------------

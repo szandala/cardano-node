@@ -106,7 +106,7 @@ class GetKESInfoX blk where
   getKESInfoFromStateInfoX _ _ = Nothing
 
 instance GetKESInfoX (ShelleyBlock era) where
-  getKESInfoFromStateInfoX _ fsi = Just fsi
+  getKESInfoFromStateInfoX _ = Just
 
 instance GetKESInfoX ByronBlock
 
@@ -725,4 +725,4 @@ instance Show remotePeer => LogFormatting (TraceKeepAliveClient remotePeer) wher
           dTime :: Time -> Double
           dTime (Time d) = realToFrac d
 
-    forHuman msg = showT msg
+    forHuman = showT

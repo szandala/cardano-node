@@ -54,22 +54,11 @@ namesForBasicInfo BIShelley {} = ["ShelleyBased"]
 namesForBasicInfo BIByron {}   = ["Byron"]
 namesForBasicInfo BINetwork {} = ["Network"]
 
-protoBasicInfoCommon :: BasicInfoCommon
-protoBasicInfoCommon = undefined
-
-protoBasicInfoShelley :: BasicInfoShelleyBased
-protoBasicInfoShelley = undefined
-
-protoBasicInfoByron :: BasicInfoByron
-protoBasicInfoByron = undefined
-
-protoBasicInfoNetwork :: BasicInfoNetwork
-protoBasicInfoNetwork = undefined
 
 docBasicInfo :: Documented BasicInfo
 docBasicInfo = Documented [
     DocMsg
-      (BICommon protoBasicInfoCommon)
+      (BICommon anyProto)
       []
       "biConfigPath is the path to the config in use. \
       \\nbiProtocol is the name of the protocol, e.g. \"Byron\", \"Shelley\" \
@@ -78,7 +67,7 @@ docBasicInfo = Documented [
       \\nbiCommit is the commit revision of the software running. \
       \\nbiNodeStartTime gives the time this node was started."
   , DocMsg
-      (BIShelley protoBasicInfoShelley)
+      (BIShelley anyProto)
       []
       "bisEra is the current era, e.g. \"Shelley\", \"Allegra\", \"Mary\" \
       \or \"Alonzo\". \
@@ -87,13 +76,13 @@ docBasicInfo = Documented [
       \\nbisEpochLength gives the number of slots which forms an epoch. \
       \\nbisSlotsPerKESPeriod gives the slots per KES period."
   , DocMsg
-      (BIByron protoBasicInfoByron)
+      (BIByron anyProto)
       []
       "bibSystemStartTime TODO JNF \
       \\nbibSlotLength gives the length of a slot as time interval. \
       \\nbibEpochLength gives the number of slots which forms an epoch."
   , DocMsg
-      (BINetwork protoBasicInfoNetwork)
+      (BINetwork anyProto)
       []
       "niAddresses IPv4 or IPv6 socket ready to accept connections\
       \or diffusion addresses. \
