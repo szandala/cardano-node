@@ -10,7 +10,7 @@ module Cardano.Logging.Resources.Types
     ) where
 
 
-import           Cardano.Logging.Types
+import           Cardano.Logging
 import           Data.Aeson
 import           Data.Text (pack)
 import           Data.Word
@@ -75,7 +75,7 @@ jsonEncodingOptions = defaultOptions
 docResourceStats :: Documented ResourceStats
 docResourceStats = Documented [
       DocMsg
-        (pure 0)
+        anyProto
         [("Stat.Cputicks", "Reports the CPU ticks, sice the process was started")
         ,("Mem.Resident", "TODO JNF")
         ,("RTS.GcLiveBytes", "TODO JNF")
