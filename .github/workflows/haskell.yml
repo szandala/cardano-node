@@ -38,20 +38,29 @@ jobs:
       run: |
         echo "BASH_PATH=$(cd $(dirname $(which bash)); pwd -W)/bash.exe" >> $GITHUB_ENV
 
-    - uses: haskell/actions/setup@v1
-      id: setup-haskell
-      with:
-        ghcup: 0.1.17.3
+    - name: Install Haskell tooling
+      run: |
+        # curl https://gitlab.haskell.org/haskell/ghcup/raw/master/bootstrap-haskell -sSf \
+        #   | BOOTSTRAP_HASKELL_MINIMAL=1 BOOTSTRAP_HASKELL_NONINTERACTIVE=1 sh
+        echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+        echo "C:/ghcup/bin" >> $GITHUB_PATH
 
     - name: Install Haskell tooling
       run: |
-        ls C:/ghcup/bin
+        ghcup upgrade
+        ghcup list
         ghcup install ghc   ${{ matrix.ghc }}
         ghcup set     ghc   ${{ matrix.ghc }}
         ghcup install cabal ${{ matrix.cabal }}
         ghcup set     cabal ${{ matrix.cabal }}
         cabal --version
         ghc --version
+        cabal update -v3
+        echo "====="
+        ls -al "$HOME"
+
+    - name: Environment
+      run: env
 
     - name: Set cache version
       run: echo "CACHE_VERSION=grFfw8r" >> $GITHUB_ENV
@@ -136,7 +145,7 @@ jobs:
     - uses: actions/cache@v2
       name: Cache cabal store
       with:
-        path: ${{ steps.setup-haskell.outputs.cabal-store }}
+        path: ${{ env.HOME }}/.cabal
         key: cache-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('dependencies.txt') }}-${{ hashFiles('date.txt') }}
         restore-keys: |
           cache-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('dependencies.txt') }}-${{ hashFiles('date.txt') }}
