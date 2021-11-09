@@ -12,7 +12,6 @@ import           Control.Exception (catch, SomeException)
 import           Data.Aeson.Types (ToJSON)
 import           Data.Maybe (fromMaybe)
 import           Data.Text
-import           Data.Text.Lazy.Builder as TB
 
 import           DataPoint.Forward.Utils (DataPoint (..))
 
@@ -142,7 +141,7 @@ documentTracer ::
      TraceConfig
   -> Trace IO a
   -> Documented a
-  -> IO [(Namespace, TB.Builder)]
+  -> IO [(Namespace, DocuResult)]
 documentTracer trConfig trace trDoc = do
     res <- catch (do
               configureTracers trConfig trDoc [trace]
