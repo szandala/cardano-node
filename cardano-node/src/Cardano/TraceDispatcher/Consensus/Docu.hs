@@ -427,25 +427,27 @@ docForge = Documented [
         (TraceNodeIsLeader anyProto)))
       [("nodeIsLeader", "TODO TraceDoc")]
       "We did the leadership check and concluded we /are/ the leader\
-      \ \
+      \\n\
       \  The node will soon forge; it is about to read its transactions from the\
-      \  Mempool. This will be followed by TraceForgedBlock."
+      \  Mempool. This will be followed by ForgedBlock."
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceForgedBlock anyProto anyProto anyProto anyProto)))
       [("forgedSlotLast", "TODO TraceDoc")]
-      "We forged a block\
-      \ \
+      "We forged a block.\
+      \\n\
       \  We record the current slot number, the point of the predecessor, the block\
       \  itself, and the total size of the mempool snapshot at the time we produced\
       \  the block (which may be significantly larger than the block, due to\
       \  maximum block size)\
-      \ \
+      \\n\
       \  This will be followed by one of three messages:\
-      \ \
-      \  * TraceAdoptedBlock (normally)\
-      \  * TraceDidntAdoptBlock (rarely)\
-      \  * TraceForgedInvalidBlock (hopefully never -- this would indicate a bug)"
+      \\n\
+      \  * AdoptedBlock (normally)\
+      \\n\
+      \  * DidntAdoptBlock (rarely)\
+      \\n\
+      \  * ForgedInvalidBlock (hopefully never -- this would indicate a bug)"
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceDidntAdoptBlock anyProto anyProto)))
@@ -495,36 +497,36 @@ docBlockchainTime = Documented [
       (TraceStartTimeInTheFuture anyProto anyProto)
       []
       "The start time of the blockchain time is in the future\
-      \\
+      \\n\
       \ We have to block (for 'NominalDiffTime') until that time comes."
   , DocMsg
       (TraceCurrentSlotUnknown anyProto anyProto)
       []
       "Current slot is not yet known\
-      \\
+      \\n\
       \ This happens when the tip of our current chain is so far in the past that\
       \ we cannot translate the current wallclock to a slot number, typically\
       \ during syncing. Until the current slot number is known, we cannot\
       \ produce blocks. Seeing this message during syncing therefore is\
       \ normal and to be expected.\
-      \\
+      \\n\
       \ We record the current time (the time we tried to translate to a 'SlotNo')\
       \ as well as the 'PastHorizonException', which provides detail on the\
       \ bounds between which we /can/ do conversions. The distance between the\
       \ current time and the upper bound should rapidly decrease with consecutive\
-      \ 'TraceCurrentSlotUnknown' messages during syncing."
+      \ 'CurrentSlotUnknown' messages during syncing."
   , DocMsg
       (TraceSystemClockMovedBack anyProto anyProto)
       []
       "The system clock moved back an acceptable time span, e.g., because of\
       \ an NTP sync.\
-      \\
+      \\n\
       \ The system clock moved back such that the new current slot would be\
       \ smaller than the previous one. If this is within the configured limit, we\
       \ trace this warning but *do not change the current slot*. The current slot\
       \ never decreases, but the current slot may stay the same longer than\
       \ expected.\
-      \\
+      \\n\
       \ When the system clock moved back more than the configured limit, we shut\
       \ down with a fatal exception."
   ]

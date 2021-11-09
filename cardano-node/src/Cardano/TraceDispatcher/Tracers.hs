@@ -302,7 +302,7 @@ mkDispatchTracers _blockConfig (TraceDispatcher _trSel) _tr nodeKernel _ekgDirec
                 allPublic
     tsnTr  <-  mkCardanoTracer
                 trBase trForward mbTrEKG
-                "TxSubmissionTracer"
+                "TxSubmission"
                 namesForTxSubmissionNode
                 severityTxSubmissionNode
                 allPublic
@@ -666,7 +666,7 @@ docTracers configFileName outputFileName _ = do
                 allPublic
     tsnTr  <-  mkCardanoTracer
                 trBase trForward mbTrEKG
-                "TxSubmissionTracer"
+                "TxSubmission"
                 namesForTxSubmissionNode
                 severityTxSubmissionNode
                 allPublic

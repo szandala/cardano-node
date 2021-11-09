@@ -342,7 +342,7 @@ docChainDBTraceEvent = Documented [
       []
       "We replayed the given block (reference) on the genesis snapshot\
       \ during the initialisation of the LedgerDB.\
-      \ \
+      \\n\
       \ The @blockInfo@ parameter corresponds replayed block and the @replayTo@\
       \ parameter corresponds to the block at the tip of the ImmDB, i.e.,\
       \ the last block to replay."
