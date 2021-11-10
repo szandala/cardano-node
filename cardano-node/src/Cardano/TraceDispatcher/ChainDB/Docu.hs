@@ -77,17 +77,17 @@ docChainDBTraceEvent = Documented [
   , DocMsg
       (ChainDB.TraceAddBlockEvent
         (ChainDB.AddedToCurrentChain [] anyProto anyProto anyProto))
-      [("density",
+      [("cardano.node.density",
         "The actual number of blocks created over the maximum expected number\
         \ of blocks that could be created over the span of the last @k@ blocks.")
-      , ("slots",
+      , ("cardano.node.slots",
         "Number of slots in this chain fragment.")
-      , ("blocks",
+      , ("cardano.node.blocks",
         "Number of blocks in this chain fragment.")
-      , ("slotInEpoch",
+      , ("cardano.node.slotInEpoch",
         "Relative slot number of the tip of the current chain within the\
         \epoch..")
-      , ("epoch",
+      , ("cardano.node.epoch",
         "In which epoch is the tip of the current chain.")
       ]
       "The new block fits onto the current chain (first\
@@ -96,17 +96,17 @@ docChainDBTraceEvent = Documented [
   , DocMsg
       (ChainDB.TraceAddBlockEvent
         (ChainDB.SwitchedToAFork [] anyProto anyProto anyProto))
-      [ ("density",
+      [ ("cardano.node.density",
         "The actual number of blocks created over the maximum expected number\
         \ of blocks that could be created over the span of the last @k@ blocks.")
-      , ("slots",
+      , ("cardano.node.slots",
         "Number of slots in this chain fragment.")
-      , ("blocks",
+      , ("cardano.node.blocks",
         "Number of blocks in this chain fragment.")
-      , ("slotInEpoch",
+      , ("cardano.node.slotInEpoch",
         "Relative slot number of the tip of the current chain within the\
         \epoch..")
-      , ("epoch",
+      , ("cardano.node.epoch",
         "In which epoch is the tip of the current chain.")
       ]
       "The new block fits onto some fork and we have switched to that fork\

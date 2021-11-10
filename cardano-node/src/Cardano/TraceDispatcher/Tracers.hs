@@ -516,11 +516,10 @@ docTracers :: forall blk t.
   -> Proxy blk
   -> IO ()
 docTracers configFileName outputFileName _ = do
-    trConfig   <- readConfiguration configFileName
-    trBase     <- docTracer (Stdout HumanFormatColoured)
-    trForward  <- docTracer Forwarder
-    mbTrEKG :: Maybe (Trace IO FormattedMessage) <-
-                  fmap Just (docTracer EKGBackend)
+    trConfig      <- readConfiguration configFileName
+    let trBase    = docTracer (Stdout MachineFormat)
+        trForward = docTracer Forwarder
+        mbTrEKG   = Just (docTracer EKGBackend)
 
     cdbmTr <- mkCardanoTracer'
                 trBase trForward mbTrEKG

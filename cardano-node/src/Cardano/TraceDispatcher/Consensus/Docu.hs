@@ -96,7 +96,7 @@ docChainSyncServerEvent = Documented [
       "A server read has blocked, either for an add block or a rollback"
     , DocMsg
       (TraceChainSyncRollForward anyProto)
-      [("ChainSync.RollForward", "TODO TraceDoc")]
+      [("cardano.node.chainSync.rollForward", "TODO TraceDoc")]
       "Roll forward to the given point."
     , DocMsg
       (TraceChainSyncRollBackward anyProto)
@@ -109,7 +109,7 @@ docBlockFetchDecision ::
 docBlockFetchDecision = Documented [
     DocMsg
       [BlockFetch.TraceLabelPeer anyProto (Right anyProto)]
-      [("connectedPeers", "Number of connected peers")]
+      [("cardano.node.connectedPeers", "Number of connected peers")]
       "Throughout the decision making process we accumulate reasons to decline\
       \ to fetch any blocks. This message carries the intermediate and final\
       \ results."
@@ -185,7 +185,7 @@ docBlockFetchServer ::
 docBlockFetchServer = Documented [
     DocMsg
       (TraceBlockFetchServerSendBlock GenesisPoint)
-      [("served.block.count", "TODO TraceDoc")]
+      [("cardano.node.served.block", "TODO TraceDoc")]
       "The server sent a block to the peer."
   ]
 
@@ -197,14 +197,14 @@ docTxInbound = Documented [
     DocMsg
     (BlockFetch.TraceLabelPeer anyProto
       (TraceTxSubmissionCollected 1))
-    [ ("submissions.submitted.count", "TODO a")]
+    [ ("cardano.node.submissions.submitted", "TODO a")]
     "Number of transactions just about to be inserted."
   ,
     DocMsg
     (BlockFetch.TraceLabelPeer anyProto
       (TraceTxSubmissionProcessed (ProcessedTxCount 1 2)))
-    [ ("submissions.accepted.count", "TODO TraceDoc")
-    , ("submissions.rejected.count", "TODO TraceDoc")
+    [ ("cardano.node.submissions.accepted", "TODO TraceDoc")
+    , ("cardano.node.submissions.rejected", "TODO TraceDoc")
     ]
     "Just processed transaction pass/fail breakdown."
   ,
@@ -266,30 +266,30 @@ docMempool :: forall blk. Documented (TraceEventMempool blk)
 docMempool = Documented [
     DocMsg
       (TraceMempoolAddedTx anyProto anyProto anyProto)
-      [ ("txsInMempool","Transactions in mempool")
-      , ("mempoolBytes", "Byte size of the mempool")
+      [ ("cardano.node.txsInMempool","Transactions in mempool")
+      , ("cardano.node.mempoolBytes", "Byte size of the mempool")
       ]
       "New, valid transaction that was added to the Mempool."
   , DocMsg
       (TraceMempoolRejectedTx anyProto anyProto anyProto)
-      [ ("txsInMempool","Transactions in mempool")
-      , ("mempoolBytes", "Byte size of the mempool")
+      [ ("cardano.node.txsInMempool","Transactions in mempool")
+      , ("cardano.node.mempoolBytes", "Byte size of the mempool")
       ]
       "New, invalid transaction thas was rejected and thus not added to\
       \ the Mempool."
   , DocMsg
       (TraceMempoolRemoveTxs [anyProto] anyProto)
-      [ ("txsInMempool","Transactions in mempool")
-      , ("mempoolBytes", "Byte size of the mempool")
+      [ ("cardano.node.txsInMempool","Transactions in mempool")
+      , ("cardano.node.mempoolBytes", "Byte size of the mempool")
       ]
       "Previously valid transactions that are no longer valid because of\
       \ changes in the ledger state. These transactions have been removed\
       \ from the Mempool."
   , DocMsg
       (TraceMempoolManuallyRemovedTxs [anyProto] [anyProto] anyProto)
-      [ ("txsInMempool","Transactions in mempool")
-      , ("mempoolBytes", "Byte size of the mempool")
-      , ("txsProcessedNum", "TODO TraceDoc")
+      [ ("cardano.node.txsInMempool","Transactions in mempool")
+      , ("cardano.node.mempoolBytes", "Byte size of the mempool")
+      , ("cardano.node.txsProcessedNum", "TODO TraceDoc")
       ]
       "Transactions that have been manually removed from the Mempool."
   ]
@@ -301,12 +301,12 @@ docForge = Documented [
     DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceStartLeadershipCheck anyProto)))
-      [("aboutToLeadSlotLast", "TODO TraceDoc")]
+      [("cardano.node.aboutToLeadSlotLast", "TODO TraceDoc")]
       "Start of the leadership check."
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceSlotIsImmutable anyProto anyProto anyProto)))
-      [("slotIsImmutable", "TODO TraceDoc")]
+      [("cardano.node.slotIsImmutable", "TODO TraceDoc")]
       "Leadership check failed: the tip of the ImmutableDB inhabits the\
       \  current slot\
       \ \
@@ -327,7 +327,7 @@ docForge = Documented [
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceBlockFromFuture anyProto anyProto)))
-      [("blockFromFuture", "TODO TraceDoc")]
+      [("cardano.node.blockFromFuture", "TODO TraceDoc")]
       "Leadership check failed: the current chain contains a block from a slot\
       \  /after/ the current slot\
       \ \
@@ -340,7 +340,7 @@ docForge = Documented [
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceBlockContext anyProto anyProto anyProto)))
-      [("blockContext", "TODO TraceDoc")]
+      [("cardano.node.blockContext", "TODO TraceDoc")]
       "We found out to which block we are going to connect the block we are about\
       \  to forge.\
       \ \
@@ -352,7 +352,7 @@ docForge = Documented [
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceNoLedgerState anyProto anyProto)))
-      [("couldNotForgeSlotLast", "TODO TraceDoc")]
+      [("cardano.node.couldNotForgeSlotLast", "TODO TraceDoc")]
       "Leadership check failed: we were unable to get the ledger state for the\
       \  point of the block we want to connect to\
       \ \
@@ -367,7 +367,7 @@ docForge = Documented [
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceLedgerState anyProto anyProto)))
-      [("ledgerState", "TODO TraceDoc")]
+      [("cardano.node.ledgerState", "TODO TraceDoc")]
       "We obtained a ledger state for the point of the block we want to\
       \  connect to\
       \ \
@@ -377,7 +377,7 @@ docForge = Documented [
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceNoLedgerView anyProto anyProto)))
-      [("couldNotForgeSlotLast", "TODO TraceDoc")]
+      [("cardano.node.couldNotForgeSlotLast", "TODO TraceDoc")]
       "Leadership check failed: we were unable to get the ledger view for the\
       \  current slot number\
       \ \
@@ -388,17 +388,17 @@ docForge = Documented [
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceLedgerView anyProto)))
-      [("ledgerView", "TODO TraceDoc")]
+      [("cardano.node.ledgerView", "TODO TraceDoc")]
       "We obtained a ledger view for the current slot number\
       \ \
       \  We record the current slot number."
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceForgeStateUpdateError anyProto anyProto)))
-      [ ("operationalCertificateStartKESPeriod", "TODO TraceDoc")
-      , ("operationalCertificateExpiryKESPeriod", "TODO TraceDoc")
-      , ("currentKESPeriod", "TODO TraceDoc")
-      , ("remainingKESPeriods", "TODO TraceDoc")
+      [ ("cardano.node.operationalCertificateStartKESPeriod", "TODO TraceDoc")
+      , ("cardano.node.operationalCertificateExpiryKESPeriod", "TODO TraceDoc")
+      , ("cardano.node.currentKESPeriod", "TODO TraceDoc")
+      , ("cardano.node.remainingKESPeriods", "TODO TraceDoc")
       ]
       "Updating the forge state failed.\
       \ \
@@ -408,7 +408,7 @@ docForge = Documented [
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceNodeCannotForge anyProto anyProto)))
-      [("nodeCannotForge", "TODO TraceDoc")]
+      [("cardano.node.nodeCannotForge", "TODO TraceDoc")]
       "We did the leadership check and concluded that we should lead and forge\
       \  a block, but cannot.\
       \ \
@@ -418,14 +418,14 @@ docForge = Documented [
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceNodeNotLeader anyProto)))
-      [("nodeNotLeader", "TODO TraceDoc")]
+      [("cardano.node.nodeNotLeader", "TODO TraceDoc")]
       "We did the leadership check and concluded we are not the leader\
       \ \
       \  We record the current slot number"
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceNodeIsLeader anyProto)))
-      [("nodeIsLeader", "TODO TraceDoc")]
+      [("cardano.node.nodeIsLeader", "TODO TraceDoc")]
       "We did the leadership check and concluded we /are/ the leader\
       \\n\
       \  The node will soon forge; it is about to read its transactions from the\
@@ -433,7 +433,7 @@ docForge = Documented [
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceForgedBlock anyProto anyProto anyProto anyProto)))
-      [("forgedSlotLast", "TODO TraceDoc")]
+      [("cardano.node.forgedSlotLast", "TODO TraceDoc")]
       "We forged a block.\
       \\n\
       \  We record the current slot number, the point of the predecessor, the block\
@@ -451,7 +451,7 @@ docForge = Documented [
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceDidntAdoptBlock anyProto anyProto)))
-      [("notAdoptedSlotLast", "TODO TraceDoc")]
+      [("cardano.node.notAdoptedSlotLast", "TODO TraceDoc")]
       "We did not adopt the block we produced, but the block was valid. We\
       \  must have adopted a block that another leader of the same slot produced\
       \  before we got the chance of adopting our own block. This is very rare,\
@@ -459,22 +459,22 @@ docForge = Documented [
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceForgedInvalidBlock anyProto anyProto anyProto)))
-      [("forgedInvalidSlotLast", "TODO TraceDoc")]
+      [("cardano.node.forgedInvalidSlotLast", "TODO TraceDoc")]
       "We forged a block that is invalid according to the ledger in the\
       \  ChainDB. This means there is an inconsistency between the mempool\
       \  validation and the ledger validation. This is a serious error!"
   , DocMsg
       (Left (TraceLabelCreds anyProto
         (TraceAdoptedBlock anyProto anyProto [anyProto])))
-      [("adoptedSlotLast", "TODO TraceDoc")]
+      [("cardano.node.adoptedSlotLast", "TODO TraceDoc")]
       "We adopted the block we produced, we also trace the transactions\
       \  that were adopted."
   , DocMsg
       (Right (TraceLabelCreds anyProto
         (TraceStartLeadershipCheckPlus anyProto 0 0 0.0)))
-      [ ("aboutToLeadSlotLast", "TODO TraceDoc")
-      , ("utxoSize", "TODO TraceDoc")
-      , ("delegMapSize", "TODO TraceDoc")
+      [ ("cardano.node.aboutToLeadSlotLast", "TODO TraceDoc")
+      , ("cardano.node.utxoSize", "TODO TraceDoc")
+      , ("cardano.node.delegMapSize", "TODO TraceDoc")
       ]
       "We adopted the block we produced, we also trace the transactions\
       \  that were adopted."
