@@ -76,14 +76,14 @@ docResourceStats :: Documented ResourceStats
 docResourceStats = Documented [
       DocMsg
         anyProto
-        [("Stat.Cputicks", "Reports the CPU ticks, sice the process was started")
-        ,("Mem.Resident", "TODO JNF")
-        ,("RTS.GcLiveBytes", "TODO JNF")
-        ,("RTS.GcMajorNum", "TODO JNF")
-        ,("RTS.GcMinorNum", "TODO JNF")
-        ,("RTS.Gcticks", "TODO JNF")
-        ,("RTS.Mutticks", "TODO JNF")
-        ,("RTS.Threads","TODO JNF")
+        [("stat.cputicks", "Reports the CPU ticks, sice the process was started")
+        ,("mem.resident", "TODO JNF")
+        ,("rts.gcLiveBytes", "TODO JNF")
+        ,("rts.gcMajorNum", "TODO JNF")
+        ,("rts.gcMinorNum", "TODO JNF")
+        ,("rts.gcticks", "TODO JNF")
+        ,("rts.mutticks", "TODO JNF")
+        ,("rts.threads","TODO JNF")
         ]
         "TODO JNF"
     ]
@@ -112,12 +112,12 @@ instance LogFormatting ResourceStats where
       ]
 
     asMetrics rs =
-      [ IntM "Stat.Cputicks" (fromIntegral $ rCentiCpu rs)
-      , IntM "Mem.Resident" (fromIntegral $ rRSS rs)
-      , IntM "RTS.GcLiveBytes" (fromIntegral $ rLive rs)
-      , IntM "RTS.GcMajorNum" (fromIntegral $ rGcsMajor rs)
-      , IntM "RTS.GcMinorNum" (fromIntegral $ rGcsMinor rs)
-      , IntM "RTS.Gcticks" (fromIntegral $ rCentiGC rs)
-      , IntM "RTS.Mutticks" (fromIntegral $ rCentiMut rs)
-      , IntM "Stat.Threads" (fromIntegral $ rThreads rs)
+      [ IntM "stat.cputicks" (fromIntegral $ rCentiCpu rs)
+      , IntM "mem.resident" (fromIntegral $ rRSS rs)
+      , IntM "rts.gcLiveBytes" (fromIntegral $ rLive rs)
+      , IntM "rts.gcMajorNum" (fromIntegral $ rGcsMajor rs)
+      , IntM "rts.gcMinorNum" (fromIntegral $ rGcsMinor rs)
+      , IntM "rts.gcticks" (fromIntegral $ rCentiGC rs)
+      , IntM "rts.mutticks" (fromIntegral $ rCentiMut rs)
+      , IntM "rts.stat.threads" (fromIntegral $ rThreads rs)
       ]
