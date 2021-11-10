@@ -263,9 +263,9 @@ documentMarkdown (Documented documented) tracers = do
       mconcat (intersperse (singleton '.') (map fromText ns))
 
     namespacesMetricsBuilder :: [Namespace] -> Builder
-    namespacesMetricsBuilder [ns] = fromText "Belongs to namespace: \n" <> namespaceMetricsBuilder ns
+    namespacesMetricsBuilder [ns] = fromText "Dispatched by: \n" <> namespaceMetricsBuilder ns
     namespacesMetricsBuilder []   = mempty
-    namespacesMetricsBuilder nsl  = fromText "Belongs to namespaces: \n" <>
+    namespacesMetricsBuilder nsl  = fromText "Dispatched by: \n" <>
       mconcat (intersperse (singleton '\n')(map namespaceMetricsBuilder nsl))
 
     namespaceMetricsBuilder :: Namespace -> Builder
