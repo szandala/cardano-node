@@ -173,8 +173,9 @@ runNode cmdPc = do
         Nothing -> putTextLn "No configuration file name found!" >> exitFailure
     baseTrace    <- NL.standardTracer
     nodeInfo <- prepareNodeInfo nc p loggerConfiguration now
+    let networkMagic = NetworkMagic 1 -- TODO: take the real NetworkMagic from the protocol.
     (forwardSink, dpStore)
-      <- withIOManager $ \iomgr -> NL.initForwarding iomgr loggerConfiguration ekgStore
+      <- withIOManager $ \iomgr -> NL.initForwarding iomgr loggerConfiguration networkMagic ekgStore
     let forwardTrace = NL.forwardTracer forwardSink
     let dataPointTracer = NL.dataPointTracer dpStore
     ekgTrace   <- NL.ekgTracer (Left ekgStore)
