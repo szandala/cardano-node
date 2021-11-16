@@ -14,7 +14,6 @@ import           Data.SOP.Strict
 import qualified Cardano.Crypto.Hash as Crypto
 import qualified Cardano.Crypto.Hashing as Byron.Crypto
 import qualified Cardano.Ledger.SafeHash as Ledger
-import qualified Cardano.Ledger.Shelley.TxBody as Shelley
 import qualified Cardano.Ledger.TxIn as Ledger
 import           Ouroboros.Consensus.Byron.Ledger.Block (ByronBlock)
 import           Ouroboros.Consensus.Byron.Ledger.Mempool (TxId (..))
