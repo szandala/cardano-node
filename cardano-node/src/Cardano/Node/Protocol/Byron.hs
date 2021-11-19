@@ -1,4 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE DataKinds #-}
+
 
 module Cardano.Node.Protocol.Byron
   ( mkSomeConsensusProtocolByron
@@ -57,6 +59,10 @@ import           Cardano.TraceDispatcher.ChainDB.Formatting ()
 -- type class instances available.
 --
 mkSomeConsensusProtocolByron
+     (LogFormatting
+       (LedgerEvent
+          (HardForkBlock
+             '[ByronBlock])))
   :: NodeByronProtocolConfiguration
   -> Maybe ProtocolFilepaths
   -> ExceptT ByronProtocolInstantiationError IO SomeConsensusProtocol

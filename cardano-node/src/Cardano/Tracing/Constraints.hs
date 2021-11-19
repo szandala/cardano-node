@@ -14,12 +14,8 @@ import           Cardano.BM.Tracing (ToObject)
 import           Cardano.Node.Queries (ConvertTxId, LedgerQueries)
 import           Cardano.Node.Queries.ConvertTxId (ConvertTxId)
 import           Cardano.Node.Queries.Ledger (LedgerQueries)
+import           Cardano.Node.Queries.KES (HasKESInfo (..), HasKESMetricsData (..))
 import           Cardano.Logging (LogFormatting)
-import           Cardano.TraceDispatcher.Consensus.Formatting (GetKESInfoX (..),
-                     HasKESInfoX (..))
-import           Cardano.TraceDispatcher.Consensus.StartLeadershipCheck
-                     (LedgerQueriesX)
-import           Cardano.TraceDispatcher.Era.ConvertTxId (ConvertTxId')
 
 import           Cardano.Ledger.Alonzo (AlonzoEra)
 import           Cardano.Ledger.Alonzo.PParams (PParamsUpdate)
@@ -41,20 +37,15 @@ import           Ouroboros.Consensus.Shelley.Ledger.Mempool (GenTx, TxId)
 
 -- | Tracing-related constraints for monitoring purposes.
 type TraceConstraints blk =
-    ( ConvertTxId' blk
-    , ConvertTxId blk
+    ( ConvertTxId blk
     , HasTxs blk
     , HasTxId (GenTx blk)
     , LedgerQueries blk
-    , LedgerQueriesX blk
     , ToJSON   (TxId (GenTx blk))
     , ToJSON   (TxOut (AlonzoEra StandardCrypto))
     , ToJSON   (PParamsUpdate (AlonzoEra StandardCrypto))
     , HasKESMetricsData blk
     , HasKESInfo blk
-    , HasKESInfoX blk
-    , GetKESInfoX blk
-
 
     , ToObject (ApplyTxErr blk)
     , ToObject (GenTx blk)

@@ -183,8 +183,9 @@ instance (Show (Header blk), ConvertRawHash blk, LedgerSupportsProtocol blk)
                , "exception" .= String (Text.pack $ show exc) ]
   forMachine _dtal TraceFoundIntersection {} =
       mkObject [ "kind" .= String "FoundIntersection" ]
-  forMachine _dtal (TraceTermination _) =
-      mkObject [ "kind" .= String "Termination" ]
+  forMachine _dtal (TraceTermination reason) =
+      mkObject [ "kind" .= String "Termination"
+               , "reason" .= String (Text.pack $ show reason) ]
 
 
 instance ConvertRawHash blk

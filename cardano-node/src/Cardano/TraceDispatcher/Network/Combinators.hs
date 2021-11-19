@@ -715,7 +715,7 @@ namesForMux' MuxTraceStartedOnDemand {}       = ["StartedOnDemand"]
 namesForMux' MuxTraceTerminating {}           = ["Terminating"]
 namesForMux' MuxTraceShutdown {}              = ["Shutdown"]
 
-severityHandshake :: NtN.HandshakeTr -> SeverityS
+severityHandshake :: NtN.HandshakeTr adr ver -> SeverityS
 severityHandshake (WithMuxBearer _ e) = severityHandshake' e
 
 severityHandshake' ::
@@ -733,7 +733,7 @@ severityHandshake''' HS.MsgReplyVersions {}   = Info
 severityHandshake''' HS.MsgAcceptVersion {}   = Info
 severityHandshake''' HS.MsgRefuse {}          = Info
 
-namesForHandshake :: NtN.HandshakeTr -> [Text]
+namesForHandshake :: NtN.HandshakeTr adr ver -> [Text]
 namesForHandshake (WithMuxBearer _ e) = namesForHandshake' e
 
 namesForHandshake' ::
@@ -751,7 +751,7 @@ namesForHandshake''' HS.MsgReplyVersions {}   = ["ReplyVersions"]
 namesForHandshake''' HS.MsgAcceptVersion {}   = ["AcceptVersion"]
 namesForHandshake''' HS.MsgRefuse {}          = ["Refuse"]
 
-severityLocalHandshake :: NtC.HandshakeTr -> SeverityS
+severityLocalHandshake :: NtC.HandshakeTr adr ver -> SeverityS
 severityLocalHandshake (WithMuxBearer _ e) = severityLocalHandshake' e
 
 severityLocalHandshake' ::
@@ -769,7 +769,7 @@ severityLocalHandshake''' HS.MsgReplyVersions {}   = Info
 severityLocalHandshake''' HS.MsgAcceptVersion {}   = Info
 severityLocalHandshake''' HS.MsgRefuse {}          = Info
 
-namesForLocalHandshake :: NtC.HandshakeTr -> [Text]
+namesForLocalHandshake :: NtC.HandshakeTr adr ver -> [Text]
 namesForLocalHandshake (WithMuxBearer _ e) = namesForLocalHandshake' e
 
 namesForLocalHandshake' ::
@@ -787,7 +787,7 @@ namesForLocalHandshake''' HS.MsgReplyVersions {}   = ["ReplyVersions"]
 namesForLocalHandshake''' HS.MsgAcceptVersion {}   = ["AcceptVersion"]
 namesForLocalHandshake''' HS.MsgRefuse {}          = ["Refuse"]
 
-severityDiffusionInit :: ND.DiffusionInitializationTracer -> SeverityS
+severityDiffusionInit :: ND.InitializationTracer rard ladr -> SeverityS
 severityDiffusionInit ND.RunServer {}                         = Info
 severityDiffusionInit ND.RunLocalServer {}                    = Info
 severityDiffusionInit ND.UsingSystemdSocket {}                = Info
@@ -804,7 +804,7 @@ severityDiffusionInit ND.UnsupportedLocalSystemdSocket {}     = Info
 severityDiffusionInit ND.UnsupportedReadySocketCase {}        = Info
 severityDiffusionInit ND.DiffusionErrored {}                  = Info
 
-namesForDiffusionInit  :: ND.DiffusionInitializationTracer -> [Text]
+namesForDiffusionInit  :: ND.InitializationTracer rard ladr -> [Text]
 namesForDiffusionInit  ND.RunServer {}                         =
   ["RunServer"]
 namesForDiffusionInit  ND.RunLocalServer {}                    =

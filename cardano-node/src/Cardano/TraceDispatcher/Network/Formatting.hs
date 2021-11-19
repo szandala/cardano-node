@@ -410,7 +410,7 @@ instance (LogFormatting peer, Show peer) =>
   forHuman (WithMuxBearer b ev) = "With mux bearer " <> showT b
                                       <> ". " <> showT ev
 
-instance LogFormatting NtC.HandshakeTr where
+instance LogFormatting (NtC.HandshakeTr LocalAddress NtC.NodeToClientVersion) where
   forMachine _dtal (WithMuxBearer b ev) =
     mkObject [ "kind" .= String "LocalHandshakeTrace"
              , "bearer" .= show b
@@ -418,7 +418,7 @@ instance LogFormatting NtC.HandshakeTr where
   forHuman (WithMuxBearer b ev) = "With mux bearer " <> showT b
                                       <> ". " <> showT ev
 
-instance LogFormatting NtN.HandshakeTr where
+instance LogFormatting (NtN.HandshakeTr NtN.RemoteAddress NtN.NodeToNodeVersion) where
   forMachine _dtal (WithMuxBearer b ev) =
     mkObject [ "kind" .= String "HandshakeTrace"
              , "bearer" .= show b
@@ -427,7 +427,8 @@ instance LogFormatting NtN.HandshakeTr where
                                       <> ". " <> showT ev
 
 
-instance LogFormatting ND.DiffusionInitializationTracer where
+instance (Show ntnAddr, Show ntcAddr) =>
+  LogFormatting (ND.InitializationTracer ntnAddr ntcAddr)  where
   forMachine _dtal (ND.RunServer sockAddr) = mkObject
     [ "kind" .= String "RunServer"
     , "socketAddress" .= String (pack (show sockAddr))
@@ -437,32 +438,32 @@ instance LogFormatting ND.DiffusionInitializationTracer where
     [ "kind" .= String "RunLocalServer"
     , "localAddress" .= String (pack (show localAddress))
     ]
-  forMachine _dtal (ND.UsingSystemdSocket path) = mkObject
+  forMachine _dtal (ND.UsingSystemdSocket localAddress) = mkObject
     [ "kind" .= String "UsingSystemdSocket"
-    , "path" .= String (pack path)
+    , "path" .= String (pack . show $ localAddress)
     ]
 
-  forMachine _dtal (ND.CreateSystemdSocketForSnocketPath path) = mkObject
+  forMachine _dtal (ND.CreateSystemdSocketForSnocketPath localAddress) = mkObject
     [ "kind" .= String "CreateSystemdSocketForSnocketPath"
-    , "path" .= String (pack path)
+    , "path" .= String (pack . show $ localAddress)
     ]
-  forMachine _dtal (ND.CreatedLocalSocket path) = mkObject
+  forMachine _dtal (ND.CreatedLocalSocket localAddress) = mkObject
     [ "kind" .= String "CreatedLocalSocket"
-    , "path" .= String (pack path)
+    , "path" .= String (pack . show $ localAddress)
     ]
-  forMachine _dtal (ND.ConfiguringLocalSocket path socket) = mkObject
+  forMachine _dtal (ND.ConfiguringLocalSocket localAddress socket) = mkObject
     [ "kind" .= String "ConfiguringLocalSocket"
-    , "path" .= String (pack path)
+    , "path" .= String (pack . show $ localAddress)
     , "socket" .= String (pack (show socket))
     ]
-  forMachine _dtal (ND.ListeningLocalSocket path socket) = mkObject
+  forMachine _dtal (ND.ListeningLocalSocket localAddress socket) = mkObject
     [ "kind" .= String "ListeningLocalSocket"
-    , "path" .= String (pack path)
+    , "path" .=  String (pack . show $ localAddress)
     , "socket" .= String (pack (show socket))
     ]
-  forMachine _dtal (ND.LocalSocketUp path fd) = mkObject
+  forMachine _dtal (ND.LocalSocketUp localAddress fd) = mkObject
     [ "kind" .= String "LocalSocketUp"
-    , "path" .= String (pack path)
+    , "path" .= String (pack . show $ localAddress)
     , "socket" .= String (pack (show fd))
     ]
   forMachine _dtal (ND.CreatingServerSocket socket) = mkObject

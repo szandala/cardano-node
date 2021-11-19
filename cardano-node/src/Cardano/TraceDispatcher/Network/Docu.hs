@@ -108,9 +108,6 @@ protoSockAddr = Socket.SockAddrUnix "loopback"
 protoLocalAddress :: LocalAddress
 protoLocalAddress = LocalAddress "loopback"
 
-protoFilePath :: FilePath
-protoFilePath = "loopback"
-
 {-# NOINLINE protoFileDescriptor #-}
 protoFileDescriptor :: FileDescriptor
 protoFileDescriptor =
@@ -726,7 +723,7 @@ docDNSResolver = Documented [
     ]
 
 docErrorPolicy :: Documented (WithAddr Socket.SockAddr ErrorPolicyTrace)
-docErrorPolicy = docErrorPolicy' protoSockAddr
+docErrorPolicy = docErrorPolicy' anyProto
 
 docLocalErrorPolicy :: Documented (WithAddr LocalAddress ErrorPolicyTrace)
 docLocalErrorPolicy = docErrorPolicy' protoLocalAdress
@@ -940,7 +937,7 @@ docMux = Documented [
         "Mux shutdown."
   ]
 
-docHandshake :: Documented NtN.HandshakeTr
+docHandshake :: Documented (NtN.HandshakeTr adr ver)
 docHandshake = Documented [
       DocMsg
         (WithMuxBearer protoPeer
@@ -967,7 +964,7 @@ docHandshake = Documented [
         "It refuses to run any version."
     ]
 
-docLocalHandshake :: Documented NtC.HandshakeTr
+docLocalHandshake :: Documented (NtC.HandshakeTr adr ver)
 docLocalHandshake = Documented [
       DocMsg
         (WithMuxBearer protoPeer
@@ -995,10 +992,10 @@ docLocalHandshake = Documented [
     ]
 
 -- Everything strict in DiffusionInitializationTracer
-docDiffusionInit :: Documented ND.DiffusionInitializationTracer
+docDiffusionInit :: Documented (ND.InitializationTracer Socket.SockAddr LocalAddress)
 docDiffusionInit = Documented [
     DocMsg
-      (ND.RunServer protoSockAddr)
+      (ND.RunServer (pure protoSockAddr))
       []
       "RunServer TODO"
   , DocMsg
@@ -1006,27 +1003,27 @@ docDiffusionInit = Documented [
       []
       "RunLocalServer TODO"
   , DocMsg
-      (ND.UsingSystemdSocket protoFilePath)
+      (ND.UsingSystemdSocket protoLocalAddress)
       []
       "UsingSystemdSocket TODO"
   , DocMsg
-      (ND.CreateSystemdSocketForSnocketPath protoFilePath)
+      (ND.CreateSystemdSocketForSnocketPath protoLocalAddress)
       []
       "CreateSystemdSocketForSnocketPath TODO"
   , DocMsg
-      (ND.CreatedLocalSocket protoFilePath)
+      (ND.CreatedLocalSocket protoLocalAddress)
       []
       "CreatedLocalSocket TODO"
   , DocMsg
-      (ND.ConfiguringLocalSocket protoFilePath protoFileDescriptor)
+      (ND.ConfiguringLocalSocket protoLocalAddress protoFileDescriptor)
       []
       "ConfiguringLocalSocket TODO"
   , DocMsg
-      (ND.ListeningLocalSocket protoFilePath protoFileDescriptor)
+      (ND.ListeningLocalSocket protoLocalAddress protoFileDescriptor)
       []
       "ListeningLocalSocket TODO"
   , DocMsg
-      (ND.LocalSocketUp protoFilePath protoFileDescriptor)
+      (ND.LocalSocketUp protoLocalAddress protoFileDescriptor)
       []
       "LocalSocketUp TODO"
   , DocMsg
