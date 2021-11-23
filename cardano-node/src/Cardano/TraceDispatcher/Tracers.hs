@@ -15,7 +15,6 @@
 
 module Cardano.TraceDispatcher.Tracers
   ( mkDispatchTracers
-  , docTracers
   ) where
 
 import           Codec.CBOR.Read (DeserialiseFailure)
@@ -38,6 +37,7 @@ import           Cardano.TraceDispatcher.Consensus.Combinators
 import           Cardano.TraceDispatcher.Consensus.Docu
 import           Cardano.TraceDispatcher.Consensus.ForgingThreadStats
                      (ForgeThreadStats, docForgeStats, forgeThreadStats)
+import           Cardano.TraceDispatcher.Consensus.Formatting
 import           Cardano.TraceDispatcher.Consensus.StateInfo
 import           Cardano.TraceDispatcher.Formatting ()
 import           Cardano.TraceDispatcher.Network.Combinators
@@ -47,26 +47,26 @@ import           Cardano.TraceDispatcher.Peer
 import           Cardano.TraceDispatcher.Resources (namesForResources,
                      severityResources, startResourceTracer)
 import qualified "trace-dispatcher" Control.Tracer as NT
--- import           Cardano.TraceDispatcher.Consensus.StartLeadershipCheck
-
+import           Trace.Forward.Utils.DataPoint (DataPoint)
 
 import           Cardano.Node.Configuration.Logging (EKGDirect)
 import           Cardano.Node.Types (NodeInfo, docNodeInfoTraceEvent)
-import           Trace.Forward.Utils.DataPoint (DataPoint)
 
-import qualified Cardano.BM.Data.Trace as Old
 import           Cardano.Tracing.Config (TraceOptions (..))
 import           Cardano.Tracing.Constraints (TraceConstraints)
 import           Cardano.Tracing.Kernel (NodeKernelData)
 import           Cardano.Tracing.OrphanInstances.Common (ToObject)
 import           Cardano.Tracing.Tracers
 import           "contra-tracer" Control.Tracer (Tracer (..))
+import qualified Cardano.BM.Data.Trace as Old
 
+import           Ouroboros.Consensus.Block (ConvertRawHash (..))
 import           Ouroboros.Consensus.Block.Forging
 import           Ouroboros.Consensus.BlockchainTime.WallClock.Util
                      (TraceBlockchainTimeEvent (..))
 import           Ouroboros.Consensus.Byron.Ledger.Block (ByronBlock)
 import           Ouroboros.Consensus.Byron.Ledger.Config (BlockConfig)
+import           Ouroboros.Consensus.Ledger.Inspect (LedgerEvent)
 import           Ouroboros.Consensus.Ledger.Query (Query)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, GenTx,
                      GenTxId)
@@ -81,6 +81,7 @@ import           Ouroboros.Consensus.MiniProtocol.ChainSync.Server
                      (TraceChainSyncServerEvent)
 import           Ouroboros.Consensus.MiniProtocol.LocalTxSubmission.Server
                      (TraceLocalTxSubmissionServerEvent (..))
+
 import qualified Ouroboros.Consensus.Network.NodeToClient as NtC
 import qualified Ouroboros.Consensus.Network.NodeToNode as NtN
 import           Ouroboros.Consensus.Node (NetworkP2PMode (..))
@@ -126,7 +127,9 @@ import           Ouroboros.Network.TxSubmission.Inbound
 import           Ouroboros.Network.TxSubmission.Outbound
                      (TraceTxSubmissionOutbound)
 
-import           Ouroboros.Consensus.Ledger.Inspect (LedgerEvent)
+
+
+
 
 import           Debug.Trace
 
@@ -136,16 +139,11 @@ mkDispatchTracers
   :: forall blk p2p.
   ( Consensus.RunNode blk
   , TraceConstraints blk
-  , LogFormatting (ConnectionId RemoteAddress)
-  , LogFormatting (ConnectionId LocalAddress)
-  , Show (ConnectionId RemoteAddress)
-  , Show (ConnectionId LocalAddress)
-  , LogFormatting (LedgerEvent blk)
 
+  , LogFormatting (LedgerEvent blk)
   , LogFormatting
     (BlockFetch.TraceLabelPeer
       (ConnectionId RemoteAddress) (TraceChainSyncClientEvent blk))
-  , LogFormatting (TraceChainSyncServerEvent blk)    
   )
   => BlockConfig blk
   -> TraceOptions
@@ -275,14 +273,8 @@ mkConsensusTracers :: forall blk.
   ( Consensus.RunNode blk
   , LogFormatting (ChainDB.InvalidBlockReason blk)
   , TraceConstraints blk
-  , LogFormatting (LedgerEvent blk)
   , LogFormatting (BlockFetch.TraceLabelPeer
                     (ConnectionId RemoteAddress) (TraceChainSyncClientEvent blk))
-  , LogFormatting (ConnectionId RemoteAddress)
-  , LogFormatting (ConnectionId LocalAddress)
-  , Show (ConnectionId RemoteAddress)
-  , Show (ConnectionId LocalAddress)
-  , LogFormatting (TraceChainSyncServerEvent blk)
   )
   => Trace IO FormattedMessage
   -> Trace IO FormattedMessage
@@ -291,7 +283,7 @@ mkConsensusTracers :: forall blk.
   -> TraceConfig
   -> NodeKernelData blk
   -> IO (Consensus.Tracers IO (ConnectionId RemoteAddress) (ConnectionId LocalAddress) blk)
-mkConsensusTracers trBase trForward mbTrEKG trDataPoint trConfig nodeKernel = do
+mkConsensusTracers trBase trForward mbTrEKG _trDataPoint trConfig nodeKernel = do
     chainSyncClientTr  <- mkCardanoTracer
                 trBase trForward mbTrEKG
                 "ChainSyncClient"
@@ -432,9 +424,6 @@ mkConsensusTracers trBase trForward mbTrEKG trDataPoint trConfig nodeKernel = do
 
 mkNodeToClientTracers :: forall blk.
   ( Consensus.RunNode blk
-  , LogFormatting (ChainDB.InvalidBlockReason blk)
-  , TraceConstraints blk
-  , LogFormatting (LedgerEvent blk)
   )
   => Trace IO FormattedMessage
   -> Trace IO FormattedMessage
@@ -442,7 +431,7 @@ mkNodeToClientTracers :: forall blk.
   -> Trace IO DataPoint
   -> TraceConfig
   -> IO (NodeToClient.Tracers IO (ConnectionId LocalAddress) blk DeserialiseFailure)
-mkNodeToClientTracers trBase trForward mbTrEKG trDataPoint trConfig = do
+mkNodeToClientTracers trBase trForward mbTrEKG _trDataPoint trConfig = do
     chainSyncTr  <-  mkCardanoTracer
                 trBase trForward mbTrEKG
                 "ChainSyncClient"
@@ -482,7 +471,7 @@ mkNodeToNodeTracers :: forall blk.
   -> Trace IO DataPoint
   -> TraceConfig
   -> IO (NodeToNode.Tracers IO (ConnectionId RemoteAddress) blk DeserialiseFailure)
-mkNodeToNodeTracers trBase trForward mbTrEKG trDataPoint trConfig = do
+mkNodeToNodeTracers trBase trForward mbTrEKG _trDataPoint trConfig = do
     chainSyncTracer <-  mkCardanoTracer
                 trBase trForward mbTrEKG
                 "ChainSyncNode"
@@ -548,7 +537,7 @@ mkDiffusionTracers ::
   -> TraceConfig
   -> IO (Diffusion.Tracers RemoteAddress NodeToNodeVersion
         LocalAddress NodeToClientVersion IO)
-mkDiffusionTracers  trBase trForward mbTrEKG trDataPoint trConfig = do
+mkDiffusionTracers  trBase trForward mbTrEKG _trDataPoint trConfig = do
     dtMuxTr   <-  mkCardanoTracer
                 trBase trForward mbTrEKG
                 "Mux"
@@ -609,7 +598,7 @@ mkDiffusionTracersExtra  :: forall p2p.
   -> TraceConfig
   -> NetworkP2PMode p2p
   -> IO (Diffusion.ExtraTracers p2p)
-mkDiffusionTracersExtra trBase trForward mbTrEKG trDataPoint trConfig EnabledP2PMode = undefined
+mkDiffusionTracersExtra _trBase _trForward _mbTrEKG _trDataPoint _trConfig EnabledP2PMode = undefined
 
     -- pure $ Diffusion.P2PTracers P2P.TracersExtra
     --          { P2P.dtTraceLocalRootPeersTracer =
@@ -661,7 +650,7 @@ mkDiffusionTracersExtra trBase trForward mbTrEKG trDataPoint trConfig EnabledP2P
     --                           verb "LocalInboundGovernor" tr
     --          }
 
-mkDiffusionTracersExtra trBase trForward mbTrEKG trDataPoint trConfig DisabledP2PMode = do
+mkDiffusionTracersExtra trBase trForward mbTrEKG _trDataPoint trConfig DisabledP2PMode = do
     dtIpSubscriptionTr   <-  mkCardanoTracer
                 trBase trForward mbTrEKG
                 "IpSubscription"
@@ -720,19 +709,19 @@ mkDiffusionTracersExtra trBase trForward mbTrEKG trDataPoint trConfig DisabledP2
        }
 
 
-docTracers :: forall blk t.
-  ( Show t
-  , forall result. Show (Query blk result)
-  , TraceConstraints blk
-  , LogFormatting (ChainDB.InvalidBlockReason blk)
-  , LedgerSupportsProtocol blk
-  , Consensus.RunNode blk
-  )
-  => FilePath
-  -> FilePath
-  -> Proxy blk
-  -> IO ()
-docTracers configFileName outputFileName _ = undefined -- do
+-- docTracers :: forall blk t.
+--   ( Show t
+--   , forall result. Show (Query blk result)
+--   , TraceConstraints blk
+--   , LogFormatting (ChainDB.InvalidBlockReason blk)
+--   , LedgerSupportsProtocol blk
+--   , Consensus.RunNode blk
+--   )
+--   => FilePath
+--   -> FilePath
+--   -> Proxy blk
+--   -> IO ()
+-- docTracers _configFileName _outputFileName _ = undefined -- do
 --     trConfig      <- readConfiguration configFileName
 --     let trBase    = docTracer (Stdout MachineFormat)
 --         trForward = docTracer Forwarder
