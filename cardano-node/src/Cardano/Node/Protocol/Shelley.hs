@@ -43,11 +43,6 @@ import           Ouroboros.Consensus.Shelley.Node (Nonce (..),
                      TPraosLeaderCredentials (..))
 import           Ouroboros.Consensus.Shelley.Protocol (TPraosCanBeLeader (..))
 
-import           Ouroboros.Consensus.HardFork.Combinator.Basics
-import           Ouroboros.Consensus.Ledger.Inspect
-import           Ouroboros.Consensus.Shelley.Ledger.Block
-
-
 import           Cardano.Ledger.BaseTypes (ProtVer (..))
 import qualified Cardano.Ledger.Shelley.Genesis as Shelley
 
@@ -66,7 +61,6 @@ import           Cardano.TraceDispatcher.Era.HardFork ()
 import           Cardano.TraceDispatcher.Era.Shelley ()
 import           Cardano.TraceDispatcher.Formatting ()
 
-import           Cardano.Logging (LogFormatting)
 import           Cardano.Node.Protocol.Types
 
 ------------------------------------------------------------------------------
@@ -80,12 +74,7 @@ import           Cardano.Node.Protocol.Types
 -- This also serves a purpose as a sanity check that we have all the necessary
 -- type class instances available.
 mkSomeConsensusProtocolShelley ::
-     (LogFormatting
-       (LedgerEvent
-          (HardForkBlock
-             '[ShelleyBlock
-                 StandardShelley])))
-  => NodeShelleyProtocolConfiguration
+  NodeShelleyProtocolConfiguration
   -> Maybe ProtocolFilepaths
   -> ExceptT ShelleyProtocolInstantiationError IO SomeConsensusProtocol
 mkSomeConsensusProtocolShelley NodeShelleyProtocolConfiguration {

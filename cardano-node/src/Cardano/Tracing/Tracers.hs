@@ -45,10 +45,6 @@ import qualified System.Metrics.Gauge as Gauge
 import qualified System.Metrics.Label as Label
 import qualified System.Remote.Monitoring as EKG
 
-import           Control.Tracer
-import           Network.Mux (MuxTrace, WithMuxBearer)
-import qualified Network.Socket as Socket (SockAddr)
-
 import "contra-tracer" Control.Tracer
 import           Control.Tracer.Transformers
 import           Cardano.TraceDispatcher.BasicInfo.Types (BasicInfo)
@@ -149,7 +145,6 @@ data Tracers peer localPeer blk p2p = Tracers
   , startupTracer :: Tracer IO (StartupTrace blk)
 
   , basicInfoTracer :: Tracer IO BasicInfo
-
   }
 
 data ForgeTracers = ForgeTracers
@@ -291,10 +286,6 @@ mkTracers
   :: forall blk p2p.
      ( Consensus.RunNode blk
      , TraceConstraints blk
-     , Show peer, Eq peer
-     , Show localPeer
-     , ToObject peer
-     , ToObject localPeer
      )
   => BlockConfig blk
   -> TraceOptions
@@ -421,7 +412,7 @@ mkTracers blockConfig tOpts@(TracingOn trSel) tr nodeKern ekgDirect enableP2P = 
      tracerOnOff (traceDiffusionInitialization trSel) verb
        "DiffusionInitializationTracer" tr
 
-mkTracers _ TracingOff _ _ _ enableP2P =
+mkTracers _ _ _ _ _ enableP2P =
   pure Tracers
     { chainDBTracer = nullTracer
     , consensusTracers = Consensus.Tracers
@@ -602,7 +593,6 @@ mkConsensusTracers
   :: forall blk peer localPeer.
      ( Show peer
      , Eq peer
-     , ToObject peer
      , LedgerQueries blk
      , ToJSON (GenTxId blk)
      , ToObject (ApplyTxErr blk)
@@ -612,6 +602,7 @@ mkConsensusTracers
      , ToObject (OtherHeaderEnvelopeError blk)
      , ToObject (ValidationErr (BlockProtocol blk))
      , ToObject (ForgeStateUpdateError blk)
+     , ToObject peer
      , Consensus.RunNode blk
      , HasKESMetricsData blk
      , HasKESInfo blk
@@ -1219,8 +1210,8 @@ forgeStateInfoTracer p _ts tracer = Tracer $ \ev -> do
 --------------------------------------------------------------------------------
 
 nodeToClientTracers'
-  :: ( ShowQuery (BlockQuery blk)
-     , ToObject localPeer
+  :: ( ToObject localPeer
+     , ShowQuery (BlockQuery blk)
      )
   => TraceSelection
   -> TracingVerbosity

@@ -13,8 +13,6 @@
 
 module Cardano.TraceDispatcher.Consensus.Formatting
   (
-    HasKESInfoX(..)
-  , GetKESInfoX(..)
   ) where
 
 import           Control.Monad.Class.MonadTime (Time (..))
@@ -32,18 +30,10 @@ import           Cardano.TraceDispatcher.Era.Byron ()
 import           Cardano.TraceDispatcher.Era.Shelley ()
 import           Cardano.TraceDispatcher.Formatting ()
 import           Cardano.TraceDispatcher.Render
+import           Cardano.Node.Queries.KES(HasKESInfo(..))
 
 import           Ouroboros.Consensus.Block.Forging
-import           Ouroboros.Consensus.Byron.Ledger.Block (ByronBlock)
-import           Ouroboros.Consensus.HardFork.Combinator
-                     (HardForkForgeStateInfo (..))
-import           Ouroboros.Consensus.HardFork.Combinator.AcrossEras
-                     (OneEraForgeStateInfo (..),
-                     OneEraForgeStateUpdateError (..))
-import           Ouroboros.Consensus.Shelley.Ledger.Block (ShelleyBlock)
 import qualified Ouroboros.Consensus.Shelley.Protocol.HotKey as HotKey
-import           Ouroboros.Consensus.TypeFamilyWrappers
-                     (WrapForgeStateInfo (..), WrapForgeStateUpdateError (..))
 
 import           Ouroboros.Consensus.Block
 import           Ouroboros.Consensus.BlockchainTime (SystemStart (..))
@@ -79,52 +69,6 @@ import           Ouroboros.Network.TxSubmission.Outbound
 import           Cardano.Protocol.TPraos.OCert (KESPeriod (..))
 
 
-class HasKESInfoX blk where
-  getKESInfoX :: Proxy blk -> ForgeStateUpdateError blk -> Maybe HotKey.KESInfo
-  getKESInfoX _ _ = Nothing
-
-instance HasKESInfoX (ShelleyBlock era) where
-  getKESInfoX _ (HotKey.KESCouldNotEvolve ki _)     = Just ki
-  getKESInfoX _ (HotKey.KESKeyAlreadyPoisoned ki _) = Just ki
-
-instance HasKESInfoX ByronBlock
-
-instance All HasKESInfoX xs => HasKESInfoX (HardForkBlock xs) where
-  getKESInfoX _ =
-      hcollapse
-    . hcmap (Proxy @HasKESInfoX) getOne
-    . getOneEraForgeStateUpdateError
-   where
-    getOne :: forall blk. HasKESInfoX blk
-           => WrapForgeStateUpdateError blk
-           -> K (Maybe HotKey.KESInfo) blk
-    getOne = K . getKESInfoX (Proxy @blk) . unwrapForgeStateUpdateError
-
-
-class GetKESInfoX blk where
-  getKESInfoFromStateInfoX :: Proxy blk -> ForgeStateInfo blk -> Maybe HotKey.KESInfo
-  getKESInfoFromStateInfoX _ _ = Nothing
-
-instance GetKESInfoX (ShelleyBlock era) where
-  getKESInfoFromStateInfoX _ = Just
-
-instance GetKESInfoX ByronBlock
-
-instance All GetKESInfoX xs => GetKESInfoX (HardForkBlock xs) where
-  getKESInfoFromStateInfoX _ forgeStateInfo =
-      case forgeStateInfo of
-        CurrentEraLacksBlockForging _ -> Nothing
-        CurrentEraForgeStateUpdated currentEraForgeStateInfo ->
-            hcollapse
-          . hcmap (Proxy @GetKESInfoX) getOne
-          . getOneEraForgeStateInfo
-          $ currentEraForgeStateInfo
-    where
-      getOne :: forall blk. GetKESInfoX blk
-             => WrapForgeStateInfo blk
-             -> K (Maybe HotKey.KESInfo) blk
-      getOne = K . getKESInfoFromStateInfoX (Proxy @blk) . unwrapForgeStateInfo
-
 instance LogFormatting a => LogFormatting (TraceLabelCreds a) where
   forMachine dtal (TraceLabelCreds creds a)  =
     mkObject [ "credentials" .= toJSON creds
@@ -136,7 +80,7 @@ instance LogFormatting a => LogFormatting (TraceLabelCreds a) where
 
 
 instance (LogFormatting (LedgerUpdate blk), LogFormatting (LedgerWarning blk))
-      => LogFormatting (LedgerEvent blk) where
+      =>  LogFormatting (LedgerEvent blk) where
   forMachine dtal = \case
     LedgerUpdate  update  -> forMachine dtal update
     LedgerWarning warning -> forMachine dtal warning
@@ -412,7 +356,7 @@ instance ( tx ~ GenTx blk
          , ConvertRawHash blk
          , GetHeader blk
          , HasHeader blk
-         , HasKESInfoX blk
+         , HasKESInfo blk
          , LedgerSupportsProtocol blk
          , SerialiseNodeToNodeConstraints blk
          , Show (ForgeStateUpdateError blk)
@@ -432,7 +376,7 @@ instance ( tx ~ GenTx blk
          , ConvertRawHash blk
          , GetHeader blk
          , HasHeader blk
-         , HasKESInfoX blk
+         , HasKESInfo blk
          , LedgerSupportsProtocol blk
          , SerialiseNodeToNodeConstraints blk
          , Show (ForgeStateUpdateError blk)
@@ -612,7 +556,7 @@ instance ( tx ~ GenTx blk
 
   asMetrics (TraceForgeStateUpdateError slot reason) =
     IntM "cardano.node.forgeStateUpdateError" (fromIntegral $ unSlotNo slot) :
-      (case getKESInfoX (Proxy @blk) reason of
+      (case getKESInfo (Proxy @blk) reason of
         Nothing -> []
         Just kesInfo ->
           [ IntM

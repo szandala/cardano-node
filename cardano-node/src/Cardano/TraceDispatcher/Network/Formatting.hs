@@ -20,7 +20,7 @@ import           Network.Mux (MuxTrace (..), WithMuxBearer (..))
 import qualified Network.Socket as Socket
 import           Text.Show
 
-import           Cardano.TraceDispatcher.Era.ConvertTxId
+import           Cardano.Node.Queries.ConvertTxId
 import           Cardano.TraceDispatcher.Formatting ()
 import           Cardano.TraceDispatcher.Render
 
@@ -164,7 +164,7 @@ instance (forall result. Show (Query blk result))
 --
 -- NOTE: this list is sorted by the unqualified name of the outermost type.
 
-instance ( ConvertTxId' blk
+instance ( ConvertTxId blk
          , ConvertRawHash blk
          , HasHeader blk
          , GetHeader blk
@@ -215,7 +215,7 @@ instance ( ConvertTxId' blk
 
 
 -- TODO Tracers
-instance ( ConvertTxId' blk
+instance ( ConvertTxId blk
          , HasTxId (GenTx blk)
          , ConvertRawHash blk
          , HasTxs blk
