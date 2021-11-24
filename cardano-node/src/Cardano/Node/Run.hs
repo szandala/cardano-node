@@ -6,7 +6,7 @@
 {-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE PackageImports      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeApplications    #-}
 
 #if !defined(mingw32_HOST_OS)
 #define UNIX
@@ -20,10 +20,11 @@ module Cardano.Node.Run
 import           Cardano.Prelude hiding (ByteString, atomically, take, trace, STM)
 import           Prelude (String, id)
 import           Data.IP (toSockAddr)
+import           Prelude (String)
 
 import qualified Control.Concurrent.Async as Async
-import           Control.Monad.Trans.Except.Extra (left)
 import           Control.Monad.Class.MonadSTM.Strict
+import           Control.Monad.Trans.Except.Extra (left)
 import           "contra-tracer" Control.Tracer
 import qualified Data.Map.Strict as Map
 import           Data.Text (breakOn, pack, take)
@@ -41,8 +42,8 @@ import qualified System.Remote.Monitoring as EKG
 
 #ifdef UNIX
 import           System.Posix.Files
-import           System.Posix.Types (FileMode)
 import qualified System.Posix.Signals as Signals
+import           System.Posix.Types (FileMode)
 #else
 import           System.Win32.File
 #endif
@@ -84,24 +85,24 @@ import           Ouroboros.Consensus.HardFork.Combinator.Degenerate
 import           Ouroboros.Consensus.Node (RunNode, RunNodeArgs (..),
                      StdRunNodeArgs (..), NetworkP2PMode (..))
 import qualified Ouroboros.Consensus.Node as Node (getChainDB, run)
-import           Ouroboros.Consensus.Node.ProtocolInfo
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
+import           Ouroboros.Consensus.Node.ProtocolInfo
 import           Ouroboros.Consensus.Shelley.Ledger.Ledger
 import           Ouroboros.Consensus.Util.Orphans ()
-import           Ouroboros.Network.Subscription
-                   ( DnsSubscriptionTarget (..)
-                   , IPSubscriptionTarget (..)
-                   )
 import qualified Ouroboros.Network.Diffusion as Diffusion
-import qualified Ouroboros.Network.Diffusion.P2P as P2P
 import qualified Ouroboros.Network.Diffusion.NonP2P as NonP2P
+import qualified Ouroboros.Network.Diffusion.P2P as P2P
 import           Ouroboros.Network.IOManager (withIOManager)
-import           Ouroboros.Network.NodeToClient (LocalAddress (..), LocalSocket (..))
-import           Ouroboros.Network.NodeToNode (RemoteAddress,
-                   AcceptedConnectionsLimit (..), DiffusionMode, PeerSelectionTargets (..))
-import           Ouroboros.Network.PeerSelection.LedgerPeers (UseLedgerAfter (..))
-import           Ouroboros.Network.PeerSelection.RelayAccessPoint (RelayAccessPoint (..))
-import qualified Shelley.Spec.Ledger.API as SL
+import           Ouroboros.Network.NodeToClient (LocalAddress (..),
+                     LocalSocket (..))
+import           Ouroboros.Network.NodeToNode (AcceptedConnectionsLimit (..),
+                     DiffusionMode, PeerSelectionTargets (..), RemoteAddress)
+import           Ouroboros.Network.PeerSelection.LedgerPeers
+                     (UseLedgerAfter (..))
+import           Ouroboros.Network.PeerSelection.RelayAccessPoint
+                     (RelayAccessPoint (..))
+import           Ouroboros.Network.Subscription (DnsSubscriptionTarget (..),
+                     IPSubscriptionTarget (..))
 
 import           Cardano.Api
 import qualified Cardano.Api.Protocol.Types as Protocol
@@ -110,9 +111,9 @@ import           Cardano.Config.Git.Rev (gitRev)
 
 import           Cardano.Node.Configuration.Socket (SocketOrSocketInfo (..),
                      gatherConfiguredSockets, getSocketOrSocketInfoAddr)
-import qualified Cardano.Node.Configuration.TopologyP2P as TopologyP2P
-import           Cardano.Node.Configuration.TopologyP2P
 import qualified Cardano.Node.Configuration.Topology as TopologyNonP2P
+import           Cardano.Node.Configuration.TopologyP2P
+import qualified Cardano.Node.Configuration.TopologyP2P as TopologyP2P
 import           Cardano.Node.Handlers.Shutdown
 import           Cardano.Node.Protocol (mkConsensusProtocol)
 import           Cardano.Node.Protocol.Types
@@ -206,16 +207,6 @@ runNode cmdPc = do
                           Just fileName -> unConfigPath fileName
                           Nothing       -> "No file path found!"
               bi <- getBasicInfo nc p fp
-
-              tracers <- mkTracers
-                          (Consensus.configBlock cfg)
-                          (ncTraceConfig nc)
-                          trace
-                          nodeKernelData
-                          (llEKGDirect loggingLayer)
-                          p2pMode
-              -- Couldn't resolve it.
-              {-
               tracers <- mkDispatchTracers
                            (Consensus.configBlock cfg)
                            (ncTraceConfig nc)
@@ -229,7 +220,7 @@ runNode cmdPc = do
                            loggerConfiguration
                            bi
                            nodeInfo
-              -}
+                           p2pMode
               Async.withAsync (handlePeersListSimple trace nodeKernelData)
                   $ \_peerLogingThread ->
                     -- We ignore peer loging thread if it dies, but it will be killed
@@ -346,9 +337,9 @@ handleSimpleNode scp runP p2pMode trace nodeTracers nc onKernel = do
                 Nothing                    -> Nothing
           , Diffusion.daLocalAddress =
               case localSocketOrPath of  -- TODO allow expressing the Nothing case in the config
-                Just (ActualSocket localSocket)  -> Just (Left  localSocket)
-                Just (SocketInfo localAddr)      -> Just (Right localAddr)
-                Nothing                          -> Nothing
+                Just (ActualSocket localSocket) -> Just (Left  localSocket)
+                Just (SocketInfo localAddr)     -> Just (Right localAddr)
+                Nothing                         -> Nothing
           , Diffusion.daAcceptedConnectionsLimit =
               AcceptedConnectionsLimit
                 { acceptedConnectionsHardLimit = 512

@@ -25,6 +25,7 @@ import           Cardano.TraceDispatcher.Formatting ()
 import           Cardano.TraceDispatcher.Render
 
 import           Cardano.Logging
+import           Cardano.Node.Configuration.TopologyP2P (UseLedger (..))
 import           Cardano.Prelude hiding (Show, show)
 
 import           Ouroboros.Consensus.Block (ConvertRawHash, GetHeader,
@@ -35,14 +36,16 @@ import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTx, HasTxId,
 import           Ouroboros.Consensus.Node.Run (SerialiseNodeToNodeConstraints,
                      estimateBlockSize)
 
-import           Ouroboros.Network.Block (HasHeader, Point, Serialised,
-                     blockHash)
 import           Network.TypedProtocol.Codec (AnyMessageAndAgency (..),
                      PeerHasAgency (..))
+import           Ouroboros.Network.Block (HasHeader, Point, Serialised,
+                     blockHash)
 import qualified Ouroboros.Network.Diffusion as ND
 import           Ouroboros.Network.Driver.Simple (TraceSendRecv (..))
 import qualified Ouroboros.Network.NodeToClient as NtC
 import qualified Ouroboros.Network.NodeToNode as NtN
+import           Ouroboros.Network.PeerSelection.LedgerPeers
+                     (NumberOfPeers (..), TraceLedgerPeers (..), unPoolStake)
 import           Ouroboros.Network.Protocol.BlockFetch.Type
 import           Ouroboros.Network.Protocol.ChainSync.Type as ChainSync
 import qualified Ouroboros.Network.Protocol.LocalStateQuery.Type as LSQ
@@ -493,3 +496,51 @@ instance (Show ntnAddr, Show ntcAddr) =>
     [ "kind" .= String "DiffusionErrored"
     , "path" .= String (pack (show exception))
     ]
+
+instance LogFormatting TraceLedgerPeers where
+  forMachine _dtal (PickedPeer addr _ackStake stake) =
+    mkObject
+      [ "kind" .= String "PickedPeer"
+      , "address" .= show addr
+      , "relativeStake" .= (realToFrac (unPoolStake stake) :: Double)
+      ]
+  forMachine _dtal (PickedPeers (NumberOfPeers n) addrs) =
+    mkObject
+      [ "kind" .= String "PickedPeers"
+      , "desiredCount" .= n
+      , "count" .= length addrs
+      , "addresses" .= show addrs
+      ]
+  forMachine _dtal (FetchingNewLedgerState cnt) =
+    mkObject
+      [ "kind" .= String "FetchingNewLedgerState"
+      , "numberOfPools" .= cnt
+      ]
+  forMachine _dtal DisabledLedgerPeers =
+    mkObject
+      [ "kind" .= String "DisabledLedgerPeers"
+      ]
+  forMachine _dtal (TraceUseLedgerAfter ula) =
+    mkObject
+      [ "kind" .= String "UseLedgerAfter"
+      , "useLedgerAfter" .= UseLedger ula
+      ]
+  forMachine _dtal WaitingOnRequest =
+    mkObject
+      [ "kind" .= String "WaitingOnRequest"
+      ]
+  forMachine _dtal (RequestForPeers (NumberOfPeers np)) =
+    mkObject
+      [ "kind" .= String "RequestForPeers"
+      , "numberOfPeers" .= np
+      ]
+  forMachine _dtal (ReusingLedgerState cnt age) =
+    mkObject
+      [ "kind" .= String "ReusingLedgerState"
+      , "numberOfPools" .= cnt
+      , "ledgerStateAge" .= age
+      ]
+  forMachine _dtal FallingBackToBootstrapPeers =
+    mkObject
+      [ "kind" .= String "FallingBackToBootstrapPeers"
+      ]

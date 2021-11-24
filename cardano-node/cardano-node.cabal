@@ -97,6 +97,7 @@ library
                        Cardano.TraceDispatcher.Network.Docu
                        Cardano.TraceDispatcher.Network.Formatting
                        Cardano.TraceDispatcher.Network.Combinators
+                       Cardano.TraceDispatcher.Network.P2P                       
                        Cardano.TraceDispatcher.Formatting
                        Cardano.TraceDispatcher.Render
                        Cardano.TraceDispatcher.Tracers
