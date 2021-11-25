@@ -670,6 +670,27 @@ mkDiffusionTracersExtra trBase trForward mbTrEKG _trDataPoint trConfig EnabledP2
       severityInboundGovernor
       allPublic
     configureTracers trConfig docInboundGovernor [inboundGovernorTr]
+    localConnectionManagerTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "LocalConnectionManager"
+      namesForConnectionManager
+      severityConnectionManager
+      allPublic
+    configureTracers trConfig docConnectionManager [localConnectionManagerTr]
+    localServerTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "LocalServer"
+      namesForServer
+      severityServer
+      allPublic
+    configureTracers trConfig docServer [localServerTr]
+    localInboundGovernorTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "LocalInboundGovernor"
+      namesForInboundGovernor
+      severityInboundGovernor
+      allPublic
+    configureTracers trConfig docInboundGovernor [localInboundGovernorTr]
     pure $ Diffusion.P2PTracers P2P.TracersExtra
              { P2P.dtTraceLocalRootPeersTracer = Tracer $
                  traceWith localRootPeersTr
@@ -690,10 +711,13 @@ mkDiffusionTracersExtra trBase trForward mbTrEKG _trDataPoint trConfig EnabledP2
              , P2P.dtServerTracer = Tracer $
                  traceWith serverTr
              , P2P.dtInboundGovernorTracer = Tracer $
-                 traceWith inboundGovernorTr  --withMetrics
-             , P2P.dtLocalConnectionManagerTracer = undefined
-             , P2P.dtLocalServerTracer = undefined
-             , P2P.dtLocalInboundGovernorTracer = undefined
+                 traceWith inboundGovernorTr
+             , P2P.dtLocalConnectionManagerTracer =  Tracer $
+                 traceWith localConnectionManagerTr
+             , P2P.dtLocalServerTracer = Tracer $
+                 traceWith localServerTr
+             , P2P.dtLocalInboundGovernorTracer = Tracer $
+                 traceWith localInboundGovernorTr
              }
 
 mkDiffusionTracersExtra trBase trForward mbTrEKG _trDataPoint trConfig DisabledP2PMode = do

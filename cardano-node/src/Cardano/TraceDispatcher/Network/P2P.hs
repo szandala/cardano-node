@@ -1064,6 +1064,7 @@ instance (Show addr, LogFormatting addr, ToJSON addr)
     mkObject [ "kind" .= String "ServerError"
              , "reason" .= show exception
              ]
+  forHuman = pack . show
 
 docServer :: Documented (ServerTrace ntnAddr)
 docServer = Documented
@@ -1204,6 +1205,16 @@ instance (ToJSON addr, Show addr)
     mkObject [ "kind" .= String "UnexpectedlyFalseAssertion"
              , "remoteSt" .= String (pack . show $ info)
              ]
+  forHuman = pack . show
+  asMetrics (TrInboundGovernorCounters InboundGovernorCounters {..}) =
+            [ IntM
+                "cardano.node.inbound-governor.warm"
+                (fromIntegral warmPeersRemote)
+            , IntM
+                "cardano.node.inbound-governor.hot"
+                (fromIntegral hotPeersRemote)
+              ]
+  asMetrics _ = []
 
 docInboundGovernor :: Documented (InboundGovernorTrace peerAddr)
 docInboundGovernor = Documented
