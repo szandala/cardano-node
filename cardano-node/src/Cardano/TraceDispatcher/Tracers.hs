@@ -642,6 +642,34 @@ mkDiffusionTracersExtra trBase trForward mbTrEKG _trDataPoint trConfig EnabledP2
       severityPeerSelectionCounters
       allPublic
     configureTracers trConfig docPeerSelectionCounters [peerSelectionCountersTr]
+    peerSelectionActionsTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "PeerSelectionActions"
+      namesForPeerSelectionActions
+      severityPeerSelectionActions
+      allPublic
+    configureTracers trConfig docPeerSelectionActions [peerSelectionActionsTr]
+    connectionManagerTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "ConnectionManager"
+      namesForConnectionManager
+      severityConnectionManager
+      allPublic
+    configureTracers trConfig docConnectionManager [connectionManagerTr]
+    serverTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "Server"
+      namesForServer
+      severityServer
+      allPublic
+    configureTracers trConfig docServer [serverTr]
+    inboundGovernorTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "InboundGovernor"
+      namesForInboundGovernor
+      severityInboundGovernor
+      allPublic
+    configureTracers trConfig docInboundGovernor [inboundGovernorTr]
     pure $ Diffusion.P2PTracers P2P.TracersExtra
              { P2P.dtTraceLocalRootPeersTracer = Tracer $
                  traceWith localRootPeersTr
@@ -654,35 +682,19 @@ mkDiffusionTracersExtra trBase trForward mbTrEKG _trDataPoint trConfig EnabledP2
              , P2P.dtDebugPeerSelectionInitiatorResponderTracer = Tracer $
                  traceWith debugPeerSelectionResponderTr
              , P2P.dtTracePeerSelectionCounters = Tracer $
-                 traceWith peerSelectionCountersTr -- with Metrics
-             , P2P.dtPeerSelectionActionsTracer = undefined
-             , P2P.dtConnectionManagerTracer = undefined -- with Metrics
-             , P2P.dtServerTracer = undefined
-             , P2P.dtInboundGovernorTracer = undefined --withMetrics
+                 traceWith peerSelectionCountersTr
+             , P2P.dtPeerSelectionActionsTracer = Tracer $
+                 traceWith peerSelectionActionsTr
+             , P2P.dtConnectionManagerTracer = Tracer $
+                 traceWith connectionManagerTr
+             , P2P.dtServerTracer = Tracer $
+                 traceWith serverTr
+             , P2P.dtInboundGovernorTracer = Tracer $
+                 traceWith inboundGovernorTr  --withMetrics
              , P2P.dtLocalConnectionManagerTracer = undefined
              , P2P.dtLocalServerTracer = undefined
              , P2P.dtLocalInboundGovernorTracer = undefined
              }
-
-             --       tracePeerSelectionCountersMetrics
-             --         (tracePeerSelectionCounters trSel)
-             --         ekgDirect
-             --    <> tracerOnOff (tracePeerSelection trSel)
-             --                   verb "PeerSelection" tr
-             -- , P2P.dtConnectionManagerTracer =
-             --       traceConnectionManagerTraceMetrics
-             --          (traceConnectionManagerCounters trSel)
-             --          ekgDirect
-             --    <> tracerOnOff (traceConnectionManager trSel)
-             --                    verb "ConnectionManager" tr
-             -- , P2P.dtServerTracer =
-             --     tracerOnOff (traceServer trSel) verb "Server" tr
-             -- , P2P.dtInboundGovernorTracer =
-             --       traceInboundGovernorCountersMetrics
-             --         (traceInboundGovernorCounters trSel)
-             --         ekgDirect
-             --    <> tracerOnOff (traceInboundGovernor trSel)
-             --                    verb "InboundGovernor" tr
 
 mkDiffusionTracersExtra trBase trForward mbTrEKG _trDataPoint trConfig DisabledP2PMode = do
     dtIpSubscriptionTr   <-  mkCardanoTracer

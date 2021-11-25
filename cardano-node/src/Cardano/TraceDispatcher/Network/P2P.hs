@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE PolyKinds           #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 {-# OPTIONS_GHC -Wno-orphans  #-}
@@ -27,13 +28,32 @@ module Cardano.TraceDispatcher.Network.P2P
 
   , namesForPeerSelectionCounters
   , severityPeerSelectionCounters
-  , docDebugSelectionCounters
+  , docPeerSelectionCounters
+
+  , namesForPeerSelectionActions
+  , severityPeerSelectionActions
+  , docPeerSelectionActions
+
+  , namesForConnectionManager
+  , severityConnectionManager
+  , docConnectionManager
+
+  , namesForServer
+  , severityServer
+  , docServer
+
+  , namesForInboundGovernor
+  , severityInboundGovernor
+  , docInboundGovernor
 
   ) where
 
 import           Cardano.Logging
 import           Cardano.Prelude hiding (group, show)
-import           Data.Aeson (ToJSONKey, Value (..), toJSON, toJSONList, (.=))
+import           Data.Aeson (ToJSON, ToJSONKey, Value (..), object, toJSON,
+                     toJSONList, (.=))
+import           Data.Aeson.Types (listValue)
+import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import           Data.Text (pack)
 import           Network.Socket (SockAddr)
@@ -41,18 +61,36 @@ import           Prelude (id, show)
 
 import           Cardano.Node.Configuration.Topology ()
 import           Cardano.Node.Configuration.TopologyP2P ()
+import           Cardano.TraceDispatcher.Network.Formatting ()
 import           Cardano.Tracing.OrphanInstances.Network ()
 
+import           Ouroboros.Network.ConnectionHandler
+                     (ConnectionHandlerTrace (..))
+import           Ouroboros.Network.ConnectionId (ConnectionId (..))
+import           Ouroboros.Network.ConnectionManager.Types
+                     (ConnectionManagerCounters (..),
+                     ConnectionManagerTrace (..))
+import qualified Ouroboros.Network.ConnectionManager.Types as ConnectionManager
+import           Ouroboros.Network.InboundGovernor
+                     (InboundGovernorTrace (..))
+import           Ouroboros.Network.InboundGovernor.State (InboundGovernorCounters (..))
+import qualified Ouroboros.Network.InboundGovernor as InboundGovernor
 import qualified Ouroboros.Network.PeerSelection.EstablishedPeers as EstablishedPeers
 import           Ouroboros.Network.PeerSelection.Governor
-                     (DebugPeerSelection (..), PeerSelectionState (..),
-                     PeerSelectionTargets (..), TracePeerSelection (..))
+                     (DebugPeerSelection (..), PeerSelectionCounters (..),
+                     PeerSelectionState (..), PeerSelectionTargets (..),
+                     TracePeerSelection (..))
 import qualified Ouroboros.Network.PeerSelection.KnownPeers as KnownPeers
+import           Ouroboros.Network.PeerSelection.PeerStateActions
+                     (PeerSelectionActionsTrace (..))
 import           Ouroboros.Network.PeerSelection.RelayAccessPoint
                      (RelayAccessPoint)
 import           Ouroboros.Network.PeerSelection.RootPeersDNS
                      (TraceLocalRootPeers (..), TracePublicRootPeers (..))
 import           Ouroboros.Network.PeerSelection.Types ()
+import           Ouroboros.Network.RethrowPolicy (ErrorCommand (..))
+import           Ouroboros.Network.Server2 (ServerTrace (..))
+
 
 namesForLocalRootPeers :: TraceLocalRootPeers ntnAddr resolverError -> [Text]
 namesForLocalRootPeers TraceLocalRootDomains {} = ["LocalRootDomains"]
@@ -125,11 +163,6 @@ docLocalRootPeers = Documented [
       ""
   ]
 
--- data TracePublicRootPeers =
---        TracePublicRootRelayAccessPoint [RelayAccessPoint]
---      | TracePublicRootDomains [DomainAccessPoint]
---      | TracePublicRootResult  DNS.Domain [(IP, DNS.TTL)]
---      | TracePublicRootFailure DNS.Domain DNS.DNSError
 
 namesForPublicRootPeers :: TracePublicRootPeers -> [Text]
 namesForPublicRootPeers TracePublicRootRelayAccessPoint {} = ["PublicRootRelayAccessPoint"]
@@ -394,6 +427,7 @@ instance LogFormatting (TracePeerSelection SockAddr) where
   forMachine _dtal (TraceChurnMode c) =
     mkObject [ "kind" .= String "ChurnMode"
              , "event" .= show c ]
+  forHuman = pack . show
 
 docPeerSelection :: Documented (TracePeerSelection SockAddr)
 docPeerSelection = Documented [
@@ -551,6 +585,7 @@ instance Show peerConn => LogFormatting (DebugPeerSelection SockAddr peerConn) w
              , "wakeupAfter" .= String (pack $ show wakeupAfter)
              , "peerSelectionState" .= String (pack $ show ev)
              ]
+  forHuman = pack . show
 
 docDebugPeerSelection :: Documented (DebugPeerSelection SockAddr peerConn)
 docDebugPeerSelection = Documented
@@ -560,6 +595,673 @@ docDebugPeerSelection = Documented
       ""
   ]
 
--- Tracer m PeerSelectionCounters
+namesForPeerSelectionCounters :: PeerSelectionCounters -> [Text]
+namesForPeerSelectionCounters _ = []
 
--- data PeerSelectionCounter
+severityPeerSelectionCounters :: PeerSelectionCounters -> SeverityS
+severityPeerSelectionCounters _ = Info
+
+instance LogFormatting PeerSelectionCounters where
+  forMachine _dtal ev =
+    mkObject [ "kind" .= String "PeerSelectionCounters"
+             , "coldPeers" .= coldPeers ev
+             , "warmPeers" .= warmPeers ev
+             , "hotPeers" .= hotPeers ev
+             ]
+  forHuman = pack . show
+  asMetrics PeerSelectionCounters {..} =
+    [ IntM
+        "cardano.node.peerSelection.cold"
+        (fromIntegral coldPeers)
+    , IntM
+        "cardano.node.peerSelection.warm"
+        (fromIntegral warmPeers)
+    , IntM
+        "cardano.node.peerSelection.hot"
+        (fromIntegral hotPeers)
+      ]
+
+docPeerSelectionCounters :: Documented PeerSelectionCounters
+docPeerSelectionCounters = Documented
+  [  DocMsg
+      (PeerSelectionCounters 1 1 1)
+      [ ("cardano.node.peerSelection.cold", "Number of cold peers")
+      , ("cardano.node.peerSelection.warm", "Number of warm peers")
+      , ("cardano.node.peerSelection.hot", "Number of hot peers") ]
+      "Counters for cold, warm and hot peers"
+  ]
+
+namesForPeerSelectionActions :: PeerSelectionActionsTrace ntnAddr -> [Text]
+namesForPeerSelectionActions PeerStatusChanged   {}     = ["StatusChanged"]
+namesForPeerSelectionActions PeerStatusChangeFailure {} = ["StatusChangeFailure"]
+namesForPeerSelectionActions PeerMonitoringError {}     = ["MonitoringError"]
+namesForPeerSelectionActions PeerMonitoringResult {}    = ["MonitoringResult"]
+
+severityPeerSelectionActions :: PeerSelectionActionsTrace ntnAddr -> SeverityS
+severityPeerSelectionActions PeerStatusChanged {}       = Info
+severityPeerSelectionActions PeerStatusChangeFailure {} = Error
+severityPeerSelectionActions PeerMonitoringError {}     = Error
+severityPeerSelectionActions PeerMonitoringResult {}    = Debug
+
+-- TODO: Write PeerStatusChangeType ToJSON at ouroboros-network
+-- For that an export is needed at ouroboros-network
+instance LogFormatting (PeerSelectionActionsTrace SockAddr) where
+  forMachine _dtal (PeerStatusChanged ps) =
+    mkObject [ "kind" .= String "PeerStatusChanged"
+             , "peerStatusChangeType" .= show ps
+             ]
+  forMachine _dtal (PeerStatusChangeFailure ps f) =
+    mkObject [ "kind" .= String "PeerStatusChangeFailure"
+             , "peerStatusChangeType" .= show ps
+             , "reason" .= show f
+             ]
+  forMachine _dtal (PeerMonitoringError connId s) =
+    mkObject [ "kind" .= String "PeerMonitoridngError"
+             , "connectionId" .= toJSON connId
+             , "reason" .= show s
+             ]
+  forMachine _dtal (PeerMonitoringResult connId wf) =
+    mkObject [ "kind" .= String "PeerMonitoringResult"
+             , "connectionId" .= toJSON connId
+             , "withProtocolTemp" .= show wf
+             ]
+  forHuman = pack . show
+
+docPeerSelectionActions :: Documented (PeerSelectionActionsTrace ntnAddr)
+docPeerSelectionActions = Documented
+  [  DocMsg
+      (PeerStatusChanged anyProto)
+      []
+      ""
+  ,  DocMsg
+      (PeerStatusChangeFailure anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (PeerMonitoringError anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (PeerMonitoringResult anyProto anyProto)
+      []
+      ""
+  ]
+
+namesForConnectionManager :: ConnectionManagerTrace ntnAddr cht -> [Text]
+namesForConnectionManager TrIncludeConnection {}  = ["IncludeConnection"]
+namesForConnectionManager TrUnregisterConnection {} = ["UnregisterConnection"]
+namesForConnectionManager TrConnect {}  = ["Connect"]
+namesForConnectionManager TrConnectError {} = ["ConnectError"]
+namesForConnectionManager TrTerminatingConnection {} = ["TerminatingConnection"]
+namesForConnectionManager TrTerminatedConnection {} = ["TerminatedConnection"]
+namesForConnectionManager TrConnectionHandler {} = ["ConnectionHandler"]
+namesForConnectionManager TrShutdown {} = ["Shutdown"]
+namesForConnectionManager TrConnectionExists {} = ["ConnectionExists"]
+namesForConnectionManager TrForbiddenConnection {} = ["ForbiddenConnection"]
+namesForConnectionManager TrImpossibleConnection {} = ["ImpossibleConnection"]
+namesForConnectionManager TrConnectionFailure {} = ["ConnectionFailure"]
+namesForConnectionManager TrConnectionNotFound {} = ["ConnectionNotFound"]
+namesForConnectionManager TrForbiddenOperation {} = ["ForbiddenOperation"]
+namesForConnectionManager TrPruneConnections {}  = ["PruneConnections"]
+namesForConnectionManager TrConnectionCleanup {} = ["ConnectionCleanup"]
+namesForConnectionManager TrConnectionTimeWait {} = ["ConnectionTimeWait"]
+namesForConnectionManager TrConnectionTimeWaitDone {} = ["ConnectionTimeWaitDone"]
+namesForConnectionManager TrConnectionManagerCounters {} = ["ConnectionManagerCounters"]
+namesForConnectionManager TrState {} = ["State"]
+namesForConnectionManager ConnectionManager.TrUnexpectedlyFalseAssertion {} =
+                            ["UnexpectedlyFalseAssertion"]
+
+severityConnectionManager ::
+  ConnectionManagerTrace addr
+    (ConnectionHandlerTrace versionNumber agreedOptions) -> SeverityS
+severityConnectionManager TrIncludeConnection {}                  = Debug
+severityConnectionManager TrUnregisterConnection {}               = Debug
+severityConnectionManager TrConnect {}                            = Debug
+severityConnectionManager TrConnectError {}                       = Info
+severityConnectionManager TrTerminatingConnection {}              = Debug
+severityConnectionManager TrTerminatedConnection {}               = Debug
+severityConnectionManager (TrConnectionHandler _ ev')             =
+        case ev' of
+          TrHandshakeSuccess {}     -> Info
+          TrHandshakeClientError {} -> Notice
+          TrHandshakeServerError {} -> Info
+          TrError _ _ ShutdownNode  -> Critical
+          TrError _ _ ShutdownPeer  -> Info
+
+severityConnectionManager TrShutdown                              = Info
+severityConnectionManager TrConnectionExists {}                   = Info
+severityConnectionManager TrForbiddenConnection {}                = Info
+severityConnectionManager TrImpossibleConnection {}               = Info
+severityConnectionManager TrConnectionFailure {}                  = Info
+severityConnectionManager TrConnectionNotFound {}                 = Debug
+severityConnectionManager TrForbiddenOperation {}                 = Info
+
+severityConnectionManager TrPruneConnections {}                   = Notice
+severityConnectionManager TrConnectionCleanup {}                  = Debug
+severityConnectionManager TrConnectionTimeWait {}                 = Debug
+severityConnectionManager TrConnectionTimeWaitDone {}             = Debug
+severityConnectionManager TrConnectionManagerCounters {}          = Info
+severityConnectionManager TrState {}                              = Info
+severityConnectionManager ConnectionManager.TrUnexpectedlyFalseAssertion {} =
+                            Error
+
+instance (Show addr, Show versionNumber, Show agreedOptions, LogFormatting addr,
+          ToJSON addr, ToJSON versionNumber, ToJSON agreedOptions)
+      => LogFormatting (ConnectionManagerTrace addr (ConnectionHandlerTrace versionNumber agreedOptions)) where
+    forMachine dtal (TrIncludeConnection prov peerAddr) =
+        mkObject $ reverse
+          [ "kind" .= String "IncludeConnection"
+          , "remoteAddress" .= forMachine dtal peerAddr
+          , "provenance" .= String (pack . show $ prov)
+          ]
+    forMachine dtal (TrUnregisterConnection prov peerAddr) =
+        mkObject $ reverse
+          [ "kind" .= String "UnregisterConnection"
+          , "remoteAddress" .= forMachine dtal peerAddr
+          , "provenance" .= String (pack . show $ prov)
+          ]
+    forMachine _dtal (TrConnect (Just localAddress) remoteAddress) =
+        mkObject
+          [ "kind" .= String "ConnectTo"
+          , "connectionId" .= toJSON ConnectionId { localAddress, remoteAddress }
+          ]
+    forMachine dtal (TrConnect Nothing remoteAddress) =
+        mkObject
+          [ "kind" .= String "ConnectTo"
+          , "remoteAddress" .= forMachine dtal remoteAddress
+          ]
+    forMachine _dtal (TrConnectError (Just localAddress) remoteAddress err) =
+        mkObject
+          [ "kind" .= String "ConnectError"
+          , "connectionId" .= toJSON ConnectionId { localAddress, remoteAddress }
+          , "reason" .= String (pack . show $ err)
+          ]
+    forMachine dtal (TrConnectError Nothing remoteAddress err) =
+        mkObject
+          [ "kind" .= String "ConnectError"
+          , "remoteAddress" .= forMachine dtal remoteAddress
+          , "reason" .= String (pack . show $ err)
+          ]
+    forMachine _dtal (TrTerminatingConnection prov connId) =
+        mkObject
+          [ "kind" .= String "TerminatingConnection"
+          , "provenance" .= String (pack . show $ prov)
+          , "connectionId" .= toJSON connId
+          ]
+    forMachine dtal (TrTerminatedConnection prov remoteAddress) =
+        mkObject
+          [ "kind" .= String "TerminatedConnection"
+          , "provenance" .= String (pack . show $ prov)
+          , "remoteAddress" .= forMachine dtal remoteAddress
+          ]
+    forMachine dtal (TrConnectionHandler connId a) =
+        mkObject
+          [ "kind" .= String "ConnectionHandler"
+          , "connectionId" .= toJSON connId
+          , "connectionHandler" .= forMachine dtal a
+          ]
+    forMachine _dtal TrShutdown =
+        mkObject
+          [ "kind" .= String "Shutdown"
+          ]
+    forMachine dtal (TrConnectionExists prov remoteAddress inState) =
+        mkObject
+          [ "kind" .= String "ConnectionExists"
+          , "provenance" .= String (pack . show $ prov)
+          , "remoteAddress" .= forMachine dtal remoteAddress
+          , "state" .= toJSON inState
+          ]
+    forMachine _dtal (TrForbiddenConnection connId) =
+        mkObject
+          [ "kind" .= String "ForbiddenConnection"
+          , "connectionId" .= toJSON connId
+          ]
+    forMachine _dtal (TrImpossibleConnection connId) =
+        mkObject
+          [ "kind" .= String "ImpossibleConnection"
+          , "connectionId" .= toJSON connId
+          ]
+    forMachine _dtal (TrConnectionFailure connId) =
+        mkObject
+          [ "kind" .= String "ConnectionFailure"
+          , "connectionId" .= toJSON connId
+          ]
+    forMachine dtal (TrConnectionNotFound prov remoteAddress) =
+        mkObject
+          [ "kind" .= String "ConnectionNotFound"
+          , "remoteAddress" .= forMachine dtal remoteAddress
+          , "provenance" .= String (pack . show $ prov)
+          ]
+    forMachine dtal (TrForbiddenOperation remoteAddress connState) =
+        mkObject
+          [ "kind" .= String "ForbiddenOperation"
+          , "remoteAddress" .= forMachine dtal remoteAddress
+          , "connectionState" .= toJSON connState
+          ]
+    forMachine dtal (TrPruneConnections peers) =
+        mkObject
+          [ "kind" .= String "PruneConnections"
+          , "peers" .= toJSON (forMachine dtal `map` peers)
+          ]
+    forMachine _dtal (TrConnectionCleanup connId) =
+        mkObject
+          [ "kind" .= String "ConnectionCleanup"
+          , "connectionId" .= toJSON connId
+          ]
+    forMachine _dtal (TrConnectionTimeWait connId) =
+        mkObject
+          [ "kind" .= String "ConnectionTimeWait"
+          , "connectionId" .= toJSON connId
+          ]
+    forMachine _dtal (TrConnectionTimeWaitDone connId) =
+        mkObject
+          [ "kind" .= String "ConnectionTimeWaitDone"
+          , "connectionId" .= toJSON connId
+          ]
+    forMachine _dtal (TrConnectionManagerCounters cmCounters) =
+        mkObject
+          [ "kind"  .= String "ConnectionManagerCounters"
+          , "state" .= toJSON cmCounters
+          ]
+    forMachine _dtal (TrState cmState) =
+        mkObject
+          [ "kind"  .= String "ConnectionManagerState"
+          , "state" .= listValue (\(addr, connState) ->
+                                         object
+                                           [ "remoteAddress"   .= toJSON addr
+                                           , "connectionState" .= toJSON connState
+                                           ])
+                                       (Map.toList cmState)
+          ]
+    forMachine _dtal (ConnectionManager.TrUnexpectedlyFalseAssertion info) =
+        mkObject
+          [ "kind" .= String "UnexpectedlyFalseAssertion"
+          , "info" .= String (pack . show $ info)
+          ]
+    forHuman = pack . show
+    asMetrics (TrConnectionManagerCounters (ConnectionManagerCounters {..})) =
+          [ IntM
+              "cardano.node.connectionManager.prunableConns"
+              (fromIntegral prunableConns)
+          , IntM
+              "cardano.node.connectionManager.duplexConns"
+              (fromIntegral duplexConns)
+          , IntM
+              "cardano.node.connectionManager.unidirectionalConns"
+              (fromIntegral uniConns)
+          , IntM
+              "cardano.node.connectionManager.incomingConns"
+              (fromIntegral incomingConns)
+          , IntM
+              "cardano.node.connectionManager.outgoingConns"
+              (fromIntegral outgoingConns)
+            ]
+    asMetrics _ = []
+
+instance (Show versionNumber, ToJSON versionNumber, ToJSON agreedOptions)
+  => LogFormatting (ConnectionHandlerTrace versionNumber agreedOptions) where
+  forMachine _dtal (TrHandshakeSuccess versionNumber agreedOptions) =
+    mkObject
+      [ "kind" .= String "HandshakeSuccess"
+      , "versionNumber" .= toJSON versionNumber
+      , "agreedOptions" .= toJSON agreedOptions
+      ]
+  forMachine _dtal (TrHandshakeClientError err) =
+    mkObject
+      [ "kind" .= String "HandshakeClientError"
+      , "reason" .= toJSON err
+      ]
+  forMachine _dtal (TrHandshakeServerError err) =
+    mkObject
+      [ "kind" .= String "HandshakeServerError"
+      , "reason" .= toJSON err
+      ]
+  forMachine _dtal (TrError e err cerr) =
+    mkObject
+      [ "kind" .= String "Error"
+      , "context" .= show e
+      , "reason" .= show err
+      , "command" .= show cerr
+      ]
+
+
+docConnectionManager :: Documented
+  (ConnectionManagerTrace
+    ntnAddr
+    (ConnectionHandlerTrace
+      ntnVersion
+      ntnVersionData))
+docConnectionManager = Documented
+  [  DocMsg
+      (TrIncludeConnection anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrUnregisterConnection anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrConnect Nothing anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrConnectError Nothing anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrTerminatingConnection anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrTerminatedConnection anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrConnectionHandler anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      TrShutdown
+      []
+      ""
+  ,  DocMsg
+      (TrConnectionExists anyProto anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrForbiddenConnection anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrImpossibleConnection anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrConnectionFailure anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrConnectionNotFound anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrForbiddenOperation anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrPruneConnections [])
+      []
+      ""
+  ,  DocMsg
+      (TrConnectionCleanup anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrConnectionTimeWait anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrConnectionTimeWaitDone anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrConnectionManagerCounters anyProto)
+      [("cardano.node.connectionManager.prunableConns","")
+      ,("cardano.node.connectionManager.duplexConns","")
+      ,("cardano.node.connectionManager.unidirectionalConns","")
+      ,("cardano.node.connectionManager.incomingConns","")
+      ,("cardano.node.connectionManager.outgoingConns","")
+      ]
+      ""
+  ,  DocMsg
+      (TrState anyProto)
+      []
+      ""
+  ,  DocMsg
+      (ConnectionManager.TrUnexpectedlyFalseAssertion anyProto)
+      []
+      ""
+  ]
+
+namesForServer :: ServerTrace ntnAddr -> [Text]
+namesForServer TrAcceptConnection {}  = ["AcceptConnection"]
+namesForServer TrAcceptError {}       = ["AcceptError"]
+namesForServer TrAcceptPolicyTrace {} = ["AcceptPolicy"]
+namesForServer TrServerStarted {}     = ["Started"]
+namesForServer TrServerStopped {}     = ["Stopped"]
+namesForServer TrServerError {}       = ["Error"]
+
+severityServer ::  ServerTrace ntnAddr -> SeverityS
+severityServer TrAcceptConnection {}  = Debug
+severityServer TrAcceptError {}       = Error
+severityServer TrAcceptPolicyTrace {} = Notice
+severityServer TrServerStarted {}     = Notice
+severityServer TrServerStopped {}     = Notice
+severityServer TrServerError {}       = Critical
+
+instance (Show addr, LogFormatting addr, ToJSON addr)
+      => LogFormatting (ServerTrace addr) where
+  forMachine dtal (TrAcceptConnection peerAddr)     =
+    mkObject [ "kind" .= String "AcceptConnection"
+             , "address" .= forMachine dtal peerAddr
+             ]
+  forMachine _dtal (TrAcceptError exception)         =
+    mkObject [ "kind" .= String "AcceptErroor"
+             , "reason" .= show exception
+             ]
+  forMachine dtal (TrAcceptPolicyTrace policyTrace) =
+    mkObject [ "kind" .= String "AcceptPolicyTrace"
+             , "policy" .= forMachine dtal policyTrace
+             ]
+  forMachine dtal (TrServerStarted peerAddrs)       =
+    mkObject [ "kind" .= String "AcceptPolicyTrace"
+             , "addresses" .= toJSON (forMachine dtal `map` peerAddrs)
+             ]
+  forMachine _dtal TrServerStopped                   =
+    mkObject [ "kind" .= String "ServerStopped"
+             ]
+  forMachine _dtal (TrServerError exception)         =
+    mkObject [ "kind" .= String "ServerError"
+             , "reason" .= show exception
+             ]
+
+docServer :: Documented (ServerTrace ntnAddr)
+docServer = Documented
+  [  DocMsg
+      (TrAcceptConnection anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrAcceptError anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrAcceptPolicyTrace anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrServerStarted anyProto)
+      []
+      ""
+  ,  DocMsg
+      TrServerStopped
+      []
+      ""
+  ,  DocMsg
+      (TrServerError anyProto)
+      []
+      ""
+  ]
+
+namesForInboundGovernor :: InboundGovernorTrace peerAddr -> [Text]
+namesForInboundGovernor TrNewConnection {}         = ["NewConnection"]
+namesForInboundGovernor TrResponderRestarted {}    = ["ResponderRestarted"]
+namesForInboundGovernor TrResponderStartFailure {} = ["ResponderStartFailure"]
+namesForInboundGovernor TrResponderErrored {}      = ["ResponderErrored"]
+namesForInboundGovernor TrResponderStarted {}      = ["ResponderStarted"]
+namesForInboundGovernor TrResponderTerminated {}   = ["ResponderTerminated"]
+namesForInboundGovernor TrPromotedToWarmRemote {}  = ["PromotedToWarmRemote"]
+namesForInboundGovernor TrPromotedToHotRemote {}   = ["PromotedToHotRemote"]
+namesForInboundGovernor TrDemotedToColdRemote {}   = ["DemotedToColdRemote"]
+namesForInboundGovernor TrWaitIdleRemote {}        = ["WaitIdleRemote"]
+namesForInboundGovernor TrMuxCleanExit {}          = ["MuxCleanExit"]
+namesForInboundGovernor TrMuxErrored {}            = ["MuxErrored"]
+namesForInboundGovernor TrInboundGovernorCounters {} = ["InboundGovernorCounters"]
+namesForInboundGovernor TrRemoteState {}           = ["RemoteState"]
+namesForInboundGovernor InboundGovernor.TrUnexpectedlyFalseAssertion {} =
+                            ["UnexpectedlyFalseAssertion"]
+
+severityInboundGovernor :: InboundGovernorTrace peerAddr -> SeverityS
+severityInboundGovernor TrNewConnection {}           = Debug
+severityInboundGovernor TrResponderRestarted {}      = Debug
+severityInboundGovernor TrResponderStartFailure {}   = Error
+severityInboundGovernor TrResponderErrored {}        = Info
+severityInboundGovernor TrResponderStarted {}        = Debug
+severityInboundGovernor TrResponderTerminated {}     = Debug
+severityInboundGovernor TrPromotedToWarmRemote {}    = Info
+severityInboundGovernor TrPromotedToHotRemote {}     = Info
+severityInboundGovernor TrDemotedToColdRemote {}     = Info
+severityInboundGovernor TrWaitIdleRemote {}          = Debug
+severityInboundGovernor TrMuxCleanExit {}            = Debug
+severityInboundGovernor TrMuxErrored {}              = Info
+severityInboundGovernor TrInboundGovernorCounters {} = Info
+severityInboundGovernor TrRemoteState {}             = Debug
+severityInboundGovernor InboundGovernor.TrUnexpectedlyFalseAssertion {}
+                                                     = Error
+
+instance (ToJSON addr, Show addr)
+      => LogFormatting (InboundGovernorTrace addr) where
+  forMachine _dtal (TrNewConnection p connId)            =
+    mkObject [ "kind" .= String "NewConnection"
+             , "provenance" .= show p
+             , "connectionId" .= toJSON connId
+             ]
+  forMachine _dtal (TrResponderRestarted connId m)       =
+    mkObject [ "kind" .= String "ResponderStarted"
+             , "connectionId" .= toJSON connId
+             , "miniProtocolNum" .= toJSON m
+             ]
+  forMachine _dtal (TrResponderStartFailure connId m s)  =
+    mkObject [ "kind" .= String "ResponderStartFailure"
+             , "connectionId" .= toJSON connId
+             , "miniProtocolNum" .= toJSON m
+             , "reason" .= show s
+             ]
+  forMachine _dtal (TrResponderErrored connId m s)       =
+    mkObject [ "kind" .= String "ResponderErrored"
+             , "connectionId" .= toJSON connId
+             , "miniProtocolNum" .= toJSON m
+             , "reason" .= show s
+             ]
+  forMachine _dtal (TrResponderStarted connId m)         =
+    mkObject [ "kind" .= String "ResponderStarted"
+             , "connectionId" .= toJSON connId
+             , "miniProtocolNum" .= toJSON m
+             ]
+  forMachine _dtal (TrResponderTerminated connId m)      =
+    mkObject [ "kind" .= String "ResponderTerminated"
+             , "connectionId" .= toJSON connId
+             , "miniProtocolNum" .= toJSON m
+             ]
+  forMachine _dtal (TrPromotedToWarmRemote connId opRes) =
+    mkObject [ "kind" .= String "PromotedToWarmRemote"
+             , "connectionId" .= toJSON connId
+             , "result" .= toJSON opRes
+             ]
+  forMachine _dtal (TrPromotedToHotRemote connId)        =
+    mkObject [ "kind" .= String "PromotedToHotRemote"
+             , "connectionId" .= toJSON connId
+             ]
+  forMachine _dtal (TrDemotedToColdRemote connId od)     =
+    mkObject [ "kind" .= String "DemotedToColdRemote"
+             , "connectionId" .= toJSON connId
+             , "result" .= show od
+             ]
+  forMachine _dtal (TrWaitIdleRemote connId opRes) =
+    mkObject [ "kind" .= String "WaitIdleRemote"
+             , "connectionId" .= toJSON connId
+             , "result" .= toJSON opRes
+             ]
+  forMachine _dtal (TrMuxCleanExit connId)               =
+    mkObject [ "kind" .= String "MuxCleanExit"
+             , "connectionId" .= toJSON connId
+             ]
+  forMachine _dtal (TrMuxErrored connId s)               =
+    mkObject [ "kind" .= String "MuxErrored"
+             , "connectionId" .= toJSON connId
+             , "reason" .= show s
+             ]
+  forMachine _dtal (TrInboundGovernorCounters counters) =
+    mkObject [ "kind" .= String "InboundGovernorCounters"
+             , "warmPeers" .= warmPeersRemote counters
+             , "hotPeers" .= hotPeersRemote counters
+             ]
+  forMachine _dtal (TrRemoteState st) =
+    mkObject [ "kind" .= String "RemoteState"
+             , "remoteSt" .= toJSON st
+             ]
+  forMachine _dtal (InboundGovernor.TrUnexpectedlyFalseAssertion info) =
+    mkObject [ "kind" .= String "UnexpectedlyFalseAssertion"
+             , "remoteSt" .= String (pack . show $ info)
+             ]
+
+docInboundGovernor :: Documented (InboundGovernorTrace peerAddr)
+docInboundGovernor = Documented
+  [  DocMsg
+      (TrResponderRestarted anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrResponderStartFailure anyProto anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrResponderErrored anyProto anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrResponderStarted anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrResponderTerminated anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrPromotedToWarmRemote anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrPromotedToHotRemote anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrDemotedToColdRemote anyProto anyProto)
+      []
+      "All mini-protocols terminated.  The boolean is true if this connection\
+      \ was not used by p2p-governor, and thus the connection will be terminated."
+  ,  DocMsg
+      (TrWaitIdleRemote anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrMuxCleanExit anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrMuxErrored anyProto anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrInboundGovernorCounters anyProto)
+      []
+      ""
+  ,  DocMsg
+      (TrRemoteState anyProto)
+      []
+      ""
+  ,  DocMsg
+      (InboundGovernor.TrUnexpectedlyFalseAssertion anyProto)
+      []
+      ""
+  ]
