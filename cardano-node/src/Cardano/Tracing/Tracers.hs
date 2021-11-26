@@ -143,7 +143,6 @@ data Tracers peer localPeer blk p2p = Tracers
 
   , startupTracer :: Tracer IO (StartupTrace blk)
 
-  , basicInfoTracer :: Tracer IO BasicInfo
   }
 
 data ForgeTracers = ForgeTracers
@@ -170,7 +169,6 @@ nullTracersP2P = Tracers
   , diffusionTracers = Diffusion.nullTracers
   , diffusionTracersExtra = Diffusion.P2PTracers P2P.nullTracers
   , startupTracer = nullTracer
-  , basicInfoTracer = nullTracer
   }
 
 nullTracersNonP2P :: Tracers peer localPeer blk Diffusion.NonP2P
@@ -317,7 +315,6 @@ mkTracers blockConfig tOpts@(TracingOn trSel) tr nodeKern ekgDirect enableP2P = 
     -- TODO: startupTracer should ignore severity level (i.e. it should always
     -- be printed)!
     , startupTracer = toLogObject' verb $ appendName "nodeconfig" tr
-    , basicInfoTracer = nullTracer
     }
  where
    diffusionTracers = Diffusion.Tracers
@@ -449,7 +446,6 @@ mkTracers _ _ _ _ _ enableP2P =
           EnabledP2PMode  -> Diffusion.P2PTracers P2P.nullTracers
           DisabledP2PMode -> Diffusion.NonP2PTracers NonP2P.nullTracers
     , startupTracer = nullTracer
-    , basicInfoTracer = nullTracer
     }
 
 --------------------------------------------------------------------------------

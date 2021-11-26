@@ -33,7 +33,7 @@ import           Ouroboros.Consensus.Node.Tracers
 import qualified Ouroboros.Consensus.Storage.ChainDB as ChainDB
 
 import           Cardano.Slotting.Slot (fromWithOrigin)
-import           Cardano.Node.Queries.Ledger (LedgerQueries(..))
+import           Cardano.Node.Queries (LedgerQueries(..))
 
 import           Cardano.Ledger.BaseTypes (StrictMaybe (..), fromSMaybe)
 

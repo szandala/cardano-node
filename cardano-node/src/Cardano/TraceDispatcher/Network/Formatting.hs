@@ -20,7 +20,7 @@ import           Network.Mux (MuxTrace (..), WithMuxBearer (..))
 import qualified Network.Socket as Socket
 import           Text.Show
 
-import           Cardano.Node.Queries.ConvertTxId
+import           Cardano.Node.Queries (ConvertTxId (..))
 import           Cardano.TraceDispatcher.Formatting ()
 import           Cardano.TraceDispatcher.Render
 

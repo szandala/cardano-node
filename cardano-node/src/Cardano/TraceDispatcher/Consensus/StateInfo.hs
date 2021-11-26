@@ -19,7 +19,7 @@ import           Data.SOP.Strict
 import           Cardano.Logging
 import           Cardano.Prelude hiding (All, Show, show)
 
-import           Cardano.Node.Queries.KES (GetKESInfo (..))
+import           Cardano.Node.Queries (GetKESInfo (..))
 import           Cardano.Protocol.TPraos.OCert (KESPeriod (..))
 import           Ouroboros.Consensus.Block.Forging
 import           Ouroboros.Consensus.Node.Tracers (TraceLabelCreds (..))

@@ -23,6 +23,7 @@ import           Data.Time (DiffTime)
 import           Text.Show
 
 import           Cardano.Logging
+import           Cardano.Node.Queries (HasKESInfo (..))
 import           Cardano.Prelude hiding (All, Show, show)
 import           Cardano.TraceDispatcher.Consensus.Combinators (ForgeTracerType,
                      TraceStartLeadershipCheckPlus (..))
@@ -30,7 +31,6 @@ import           Cardano.TraceDispatcher.Era.Byron ()
 import           Cardano.TraceDispatcher.Era.Shelley ()
 import           Cardano.TraceDispatcher.Formatting ()
 import           Cardano.TraceDispatcher.Render
-import           Cardano.Node.Queries.KES(HasKESInfo(..))
 
 import           Ouroboros.Consensus.Block.Forging
 import qualified Ouroboros.Consensus.Shelley.Protocol.HotKey as HotKey

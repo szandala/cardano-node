@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE PackageImports        #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -260,6 +259,7 @@ mkDispatchTracers _blockConfig (TraceDispatcher _trSel) _tr nodeKernel _ekgDirec
       , nodeToNodeTracers = nodeToNodeTr
       , diffusionTracers = diffusionTr
       , diffusionTracersExtra = diffusionTrExtra
+      , startupTracer = mempty
     }
 
 mkDispatchTracers blockConfig tOpts tr nodeKern ekgDirect _ _ _ _ _ _ _ enableP2P =
