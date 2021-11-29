@@ -66,10 +66,12 @@ initTraceDispatcher nc p networkMagic nodeKernel p2pMode = do
     withIOManager $ \iomgr ->
       initForwarding iomgr trConfig networkMagic ekgStore
 
+  stdoutTrace <- standardTracer
+
   tracers <-
     mkDispatchTracers
       nodeKernel
-      standardTracer
+      stdoutTrace
       (forwardTracer forwardSink)
       (Just ekgTrace)
       (dataPointTracer dpStore)
