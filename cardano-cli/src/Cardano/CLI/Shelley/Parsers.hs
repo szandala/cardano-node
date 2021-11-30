@@ -341,9 +341,10 @@ pStakeAddressCmd =
                                            <*> pMaybeOutputFile
 
     pStakeAddressRegistrationCert :: Parser StakeAddressCmd
-    pStakeAddressRegistrationCert = StakeRegistrationCert
-                                      <$> pStakeVerifier
-                                      <*> pOutputFile
+    pStakeAddressRegistrationCert =
+      StakeRegistrationCert
+      <$> (Left <$> pStakeVerifier <|> Right <$> pStakeAddress)
+      <*> pOutputFile
 
     pStakeAddressDeregistrationCert :: Parser StakeAddressCmd
     pStakeAddressDeregistrationCert = StakeCredentialDeRegistrationCert

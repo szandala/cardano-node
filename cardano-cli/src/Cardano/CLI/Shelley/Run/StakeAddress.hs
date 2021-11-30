@@ -116,23 +116,31 @@ runStakeAddressBuild stakeVerifier network mOutputFp =
 
 
 runStakeCredentialRegistrationCert
-  :: StakeVerifier
+  :: Either StakeVerifier StakeAddress
   -> OutputFile
   -> ExceptT ShelleyStakeAddressCmdError IO ()
 runStakeCredentialRegistrationCert stakeVerifier (OutputFile oFp) =
   case stakeVerifier of
-    StakeVerifierScriptFile (ScriptFile sFile) -> do
+    Left (StakeVerifierScriptFile (ScriptFile sFile)) -> do
       ScriptInAnyLang _ script <- firstExceptT ShelleyStakeAddressCmdReadScriptFileError
                                     $ readFileScriptInAnyLang sFile
       let stakeCred = StakeCredentialByScript $ hashScript script
       writeRegistrationCert stakeCred
-    StakeVerifierKey stakeVerKeyOrFile -> do
+    Left (StakeVerifierKey stakeVerKeyOrFile) -> do
       stakeVerKey <- firstExceptT ShelleyStakeAddressCmdReadKeyFileError
         . newExceptT
         $ readVerificationKeyOrFile AsStakeKey stakeVerKeyOrFile
       let stakeCred = StakeCredentialByKey (verificationKeyHash stakeVerKey)
       writeRegistrationCert stakeCred
+    Right stakeAddr ->
+      writeRegistrationCert $ stakeAddrToStakeCredential stakeAddr
  where
+
+  --TODO: expose a pattern for StakeAddress that give us the StakeCredential
+  stakeAddrToStakeCredential :: StakeAddress -> StakeCredential
+  stakeAddrToStakeCredential (StakeAddress _ scred) =
+    fromShelleyStakeCredential scred
+
   writeRegistrationCert
     :: StakeCredential
     -> ExceptT ShelleyStakeAddressCmdError IO ()

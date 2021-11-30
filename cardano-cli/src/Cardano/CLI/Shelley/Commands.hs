@@ -118,7 +118,7 @@ data StakeAddressCmd
   = StakeAddressKeyGen VerificationKeyFile SigningKeyFile
   | StakeAddressKeyHash (VerificationKeyOrFile StakeKey) (Maybe OutputFile)
   | StakeAddressBuild StakeVerifier NetworkId (Maybe OutputFile)
-  | StakeRegistrationCert StakeVerifier OutputFile
+  | StakeRegistrationCert (Either StakeVerifier StakeAddress) OutputFile
   | StakeCredentialDelegationCert
       StakeVerifier
       (VerificationKeyOrHashOrFile StakePoolKey)
