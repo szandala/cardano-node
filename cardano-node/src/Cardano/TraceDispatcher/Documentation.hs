@@ -141,6 +141,7 @@ docTracers :: forall blk t peer remotePeer.
   , LogFormatting remotePeer
   , Show remotePeer
   , Show (TxId (GenTx blk))
+  , Show peer
   )
   => FilePath
   -> FilePath
@@ -379,79 +380,135 @@ docTracers configFileName outputFileName _ = do
     blockchainTimeTrDoc <- documentTracer trConfig blockchainTimeTr
       (docBlockchainTime :: Documented (TraceBlockchainTimeEvent t))
 
---     keepAliveClientTr  <- mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "KeepAliveClient"
---                 namesForKeepAliveClient
---                 severityKeepAliveClient
---                 allPublic
---     configureTracers trConfig docKeepAliveClient [keepAliveClientTr]
+-- Node to client
 
--- End consensus
+    keepAliveClientTr  <- mkCardanoTracer
+                trBase trForward mbTrEKG
+                "KeepAliveClient"
+                namesForKeepAliveClient
+                severityKeepAliveClient
+                allPublic
+    configureTracers trConfig docKeepAliveClient [keepAliveClientTr]
+    keepAliveClientTrDoc <- documentTracer trConfig keepAliveClientTr
+      (docKeepAliveClient :: Documented (TraceKeepAliveClient peer))
 
---     chainSyncTr  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "ChainSyncClient"
---                 namesForTChainSync
---                 severityTChainSync
---                 allPublic
---     configureTracers trConfig docTChainSync [chainSyncTr]
---     txSubmissionTr  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "TxSubmissionClient"
---                 namesForTTxSubmission
---                 severityTTxSubmission
---                 allPublic
---     configureTracers trConfig docTTxSubmission [txSubmissionTr]
---     stateQueryTr  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "StateQueryClient"
---                 namesForTStateQuery
---                 severityTStateQuery
---                 allPublic
---     configureTracers trConfig docTStateQuery [stateQueryTr]
---     chainSyncTracer <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "ChainSyncNode"
---                 namesForTChainSyncNode
---                 severityTChainSyncNode
---                 allPublic
---     configureTracers trConfig docTChainSync [chainSyncTracer]
---     chainSyncSerialisedTr <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "ChainSyncSerialised"
---                 namesForTChainSyncSerialised
---                 severityTChainSyncSerialised
---                 allPublic
---     configureTracers trConfig docTChainSync [chainSyncSerialisedTr]
---     blockFetchTr  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "BlockFetch"
---                 namesForTBlockFetch
---                 severityTBlockFetch
---                 allPublic
---     configureTracers trConfig docTBlockFetch [blockFetchTr]
---     blockFetchSerialisedTr <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "BlockFetchSerialised"
---                 namesForTBlockFetchSerialised
---                 severityTBlockFetchSerialised
---                 allPublic
---     configureTracers trConfig docTBlockFetch [blockFetchSerialisedTr]
---     txSubmissionTr  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "TxSubmission"
---                 namesForTxSubmissionNode
---                 severityTxSubmissionNode
---                 allPublic
---     configureTracers trConfig docTTxSubmissionNode [txSubmissionTr]
---     txSubmission2Tracer  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "TxSubmission2"
---                 namesForTxSubmission2Node
---                 severityTxSubmission2Node
---                 allPublic
---     configureTracers trConfig docTTxSubmission2Node [txSubmission2Tracer]
+    chainSyncTr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "ChainSyncClient"
+                namesForTChainSync
+                severityTChainSync
+                allPublic
+    configureTracers trConfig docTChainSync [chainSyncTr]
+    chainSyncTrDoc <- documentTracer trConfig chainSyncTr
+      (docTChainSync :: Documented
+        (BlockFetch.TraceLabelPeer peer (TraceSendRecv
+          (ChainSync x (Point blk) (Tip blk)))))
+
+    txSubmissionTr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "TxSubmissionClient"
+                namesForTTxSubmission
+                severityTTxSubmission
+                allPublic
+    configureTracers trConfig docTTxSubmission [txSubmissionTr]
+    txSubmissionTrDoc <- documentTracer trConfig txSubmissionTr
+      (docTTxSubmission :: Documented
+         (BlockFetch.TraceLabelPeer
+            peer
+            (TraceSendRecv
+               (LTS.LocalTxSubmission
+                  (GenTx blk) (ApplyTxErr blk)))))
+
+
+    stateQueryTr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "StateQueryClient"
+                namesForTStateQuery
+                severityTStateQuery
+                allPublic
+    configureTracers trConfig docTStateQuery [stateQueryTr]
+    stateQueryTrDoc <- documentTracer trConfig stateQueryTr
+      (docTStateQuery :: Documented
+            (BlockFetch.TraceLabelPeer peer
+             (TraceSendRecv
+               (LocalStateQuery blk (Point blk) (Query blk)))))
+
+-- Node to Node
+
+    chainSyncNodeTr <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "ChainSyncNode"
+                namesForTChainSyncNode
+                severityTChainSyncNode
+                allPublic
+    configureTracers trConfig docTChainSync [chainSyncNodeTr]
+    chainSyncNodeTrDoc <- documentTracer trConfig chainSyncNodeTr
+      (docTChainSync :: Documented (BlockFetch.TraceLabelPeer peer (TraceSendRecv
+          (ChainSync x (Point blk) (Tip blk)))))
+
+    chainSyncSerialisedTr <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "ChainSyncSerialised"
+                namesForTChainSyncSerialised
+                severityTChainSyncSerialised
+                allPublic
+    configureTracers trConfig docTChainSync [chainSyncSerialisedTr]
+    chainSyncSerialisedTrDoc <- documentTracer trConfig chainSyncSerialisedTr
+      (docTChainSync :: Documented (BlockFetch.TraceLabelPeer peer (TraceSendRecv
+          (ChainSync x (Point blk) (Tip blk)))))
+
+    blockFetchTr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "BlockFetch"
+                namesForTBlockFetch
+                severityTBlockFetch
+                allPublic
+    configureTracers trConfig docTBlockFetch [blockFetchTr]
+    blockFetchTrDoc <- documentTracer trConfig blockFetchTr
+      (docTBlockFetch :: Documented
+            (BlockFetch.TraceLabelPeer peer
+             (TraceSendRecv
+               (BlockFetch x (Point blk)))))
+
+    blockFetchSerialisedTr <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "BlockFetchSerialised"
+                namesForTBlockFetchSerialised
+                severityTBlockFetchSerialised
+                allPublic
+    configureTracers trConfig docTBlockFetch [blockFetchSerialisedTr]
+    blockFetchSerialisedTrDoc <- documentTracer trConfig blockFetchSerialisedTr
+      (docTBlockFetch :: Documented
+            (BlockFetch.TraceLabelPeer peer
+             (TraceSendRecv
+               (BlockFetch x (Point blk)))))
+
+    txSubmissionNodeTr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "TxSubmission"
+                namesForTxSubmissionNode
+                severityTxSubmissionNode
+                allPublic
+    configureTracers trConfig docTTxSubmissionNode [txSubmissionNodeTr]
+    txSubmissionNodeTrDoc <- documentTracer trConfig txSubmissionNodeTr
+      (docTTxSubmissionNode :: Documented
+        (BlockFetch.TraceLabelPeer peer
+          (TraceSendRecv
+            (TxSubmission (GenTxId blk) (GenTx blk)))))
+
+    txSubmission2Tr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "TxSubmission2"
+                namesForTxSubmission2Node
+                severityTxSubmission2Node
+                allPublic
+    configureTracers trConfig docTTxSubmission2Node [txSubmission2Tr]
+    txSubmission2TrDoc <- documentTracer trConfig txSubmission2Tr
+      (docTTxSubmission2Node :: Documented
+        (BlockFetch.TraceLabelPeer peer
+          (TraceSendRecv
+            (TxSubmission2 (GenTxId blk) (GenTx blk)))))
+
 -- -- Diffusion
 --     dtMuxTr   <-  mkCardanoTracer
 --                 trBase trForward mbTrEKG
@@ -638,7 +695,7 @@ docTracers configFileName outputFileName _ = do
             <> peersTrDoc
             <> chainDBTrDoc
             <> replayBlockTrDoc
-            -- Consensus
+-- Consensus
             <> chainSyncClientTrDoc
             <> chainSyncServerHeaderTrDoc
             <> chainSyncServerBlockTrDoc
@@ -652,7 +709,20 @@ docTracers configFileName outputFileName _ = do
             <> mempoolTrDoc
             <> forgeTrDoc
             <> blockchainTimeTrDoc
-            -- NodeToClient
+-- NodeToClient
+            <> keepAliveClientTrDoc
+            <> chainSyncTrDoc
+            <> txSubmissionTrDoc
+            <> stateQueryTrDoc
+-- Node to Node
+            <> chainSyncNodeTrDoc
+            <> chainSyncSerialisedTrDoc
+            <> blockFetchTrDoc
+            <> blockFetchSerialisedTrDoc
+            <> txSubmissionNodeTrDoc
+            <> txSubmission2TrDoc
+-- Diffusion
+
 
     res <- buildersToText bl trConfig
     T.writeFile outputFileName res
