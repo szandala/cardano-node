@@ -2,11 +2,9 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE PackageImports        #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
 
 {-# OPTIONS_GHC -Wno-unused-imports  #-}
 {-# OPTIONS_GHC -Wno-deprecations  #-}
@@ -82,9 +80,7 @@ import           Ouroboros.Consensus.MiniProtocol.ChainSync.Server
                      (TraceChainSyncServerEvent)
 import           Ouroboros.Consensus.MiniProtocol.LocalTxSubmission.Server
                      (TraceLocalTxSubmissionServerEvent (..))
-import qualified Ouroboros.Consensus.Network.NodeToClient as NodeToClient
 import qualified Ouroboros.Consensus.Network.NodeToClient as NtC
-import qualified Ouroboros.Consensus.Network.NodeToNode as NodeToNode
 import qualified Ouroboros.Consensus.Network.NodeToNode as NtN
 import           Ouroboros.Consensus.Node (NetworkP2PMode (..))
 import qualified Ouroboros.Consensus.Node.Run as Consensus
@@ -100,15 +96,18 @@ import qualified Ouroboros.Network.BlockFetch.ClientState as BlockFetch
 import           Ouroboros.Network.BlockFetch.Decision
 import           Ouroboros.Network.ConnectionId (ConnectionId)
 import qualified Ouroboros.Network.Diffusion as Diffusion
-import qualified Ouroboros.Network.Diffusion as ND
 import qualified Ouroboros.Network.Diffusion.NonP2P as NonP2P
 import qualified Ouroboros.Network.Diffusion.P2P as P2P
 import           Ouroboros.Network.Driver.Simple (TraceSendRecv)
 import           Ouroboros.Network.KeepAlive (TraceKeepAliveClient (..))
 import           Ouroboros.Network.NodeToClient (LocalAddress,
                      NodeToClientVersion)
+import qualified Ouroboros.Network.NodeToClient as NtC
 import           Ouroboros.Network.NodeToNode (ErrorPolicyTrace (..),
-                     NodeToNodeVersion, RemoteAddress, WithAddr (..))
+                     HandshakeTr, NodeToNodeVersion, RemoteAddress,
+                     WithAddr (..))
+import qualified Ouroboros.Network.NodeToNode as NtN
+import           Ouroboros.Network.PeerSelection.LedgerPeers (TraceLedgerPeers)
 import           Ouroboros.Network.Protocol.BlockFetch.Type (BlockFetch)
 import           Ouroboros.Network.Protocol.ChainSync.Type (ChainSync)
 import           Ouroboros.Network.Protocol.LocalStateQuery.Type
@@ -510,49 +509,67 @@ docTracers configFileName outputFileName _ = do
             (TxSubmission2 (GenTxId blk) (GenTx blk)))))
 
 -- -- Diffusion
---     dtMuxTr   <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "Mux"
---                 namesForMux
---                 severityMux
---                 allPublic
---     configureTracers trConfig docMux [dtMuxTr]
---     dtLocalMuxTr   <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "MuxLocal"
---                 namesForMux
---                 severityMux
---                 allPublic
---     configureTracers trConfig docMux [dtLocalMuxTr]
---     dtHandshakeTr   <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "Handshake"
---                 namesForHandshake
---                 severityHandshake
---                 allPublic
---     configureTracers trConfig docHandshake [dtHandshakeTr]
---     dtLocalHandshakeTr  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "LocalHandshake"
---                 namesForLocalHandshake
---                 severityLocalHandshake
---                 allPublic
---     configureTracers trConfig docLocalHandshake [dtLocalHandshakeTr]
---     dtDiffusionInitializationTr   <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "DiffusionInit"
---                 namesForDiffusionInit
---                 severityDiffusionInit
---                 allPublic
---     configureTracers trConfig docDiffusionInit [dtDiffusionInitializationTr]
---     dtLedgerPeersTr   <- mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "LedgerPeers"
---                 namesForLedgerPeers
---                 severityLedgerPeers
---                 allPublic
---     configureTracers trConfig docLedgerPeers [dtLedgerPeersTr]
--- -- DiffusionTracersExtra
+    dtMuxTr   <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "Mux"
+                namesForMux
+                severityMux
+                allPublic
+    configureTracers trConfig docMux [dtMuxTr]
+    dtMuxTrDoc <- documentTracer trConfig dtMuxTr
+      (docMux :: Documented (WithMuxBearer peer MuxTrace))
+
+    dtLocalMuxTr   <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "MuxLocal"
+                namesForMux
+                severityMux
+                allPublic
+    configureTracers trConfig docMux [dtLocalMuxTr]
+    dtLocalMuxTrDoc <- documentTracer trConfig dtLocalMuxTr
+      (docMux :: Documented (WithMuxBearer peer MuxTrace))
+
+    dtHandshakeTr   <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "Handshake"
+                namesForHandshake
+                severityHandshake
+                allPublic
+    configureTracers trConfig docHandshake [dtHandshakeTr]
+    dtHandshakeTrDoc <- documentTracer trConfig dtHandshakeTr
+      (docHandshake :: Documented (NtN.HandshakeTr NtN.RemoteAddress NtN.NodeToNodeVersion))
+
+    dtLocalHandshakeTr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "LocalHandshake"
+                namesForLocalHandshake
+                severityLocalHandshake
+                allPublic
+    configureTracers trConfig docLocalHandshake [dtLocalHandshakeTr]
+    dtLocalHandshakeTrDoc <- documentTracer trConfig dtLocalHandshakeTr
+      (docLocalHandshake :: Documented (NtC.HandshakeTr LocalAddress NtC.NodeToClientVersion))
+
+    dtDiffusionInitializationTr   <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "DiffusionInit"
+                namesForDiffusionInit
+                severityDiffusionInit
+                allPublic
+    configureTracers trConfig docDiffusionInit [dtDiffusionInitializationTr]
+    dtDiffusionInitializationTrDoc <- documentTracer trConfig dtDiffusionInitializationTr
+      (docDiffusionInit :: Documented (Diffusion.InitializationTracer Socket.SockAddr LocalAddress))
+
+    dtLedgerPeersTr  <- mkCardanoTracer
+                trBase trForward mbTrEKG
+                "LedgerPeers"
+                namesForLedgerPeers
+                severityLedgerPeers
+                allPublic
+    configureTracers trConfig docLedgerPeers [dtLedgerPeersTr]
+    dtLedgerPeersTrDoc <- documentTracer trConfig dtLedgerPeersTr
+      (docLedgerPeers :: Documented TraceLedgerPeers)
+
+-- -- DiffusionTracersExtra P2P
 --     localRootPeersTr  <-  mkCardanoTracer
 --       trBase trForward mbTrEKG
 --       "LocalRootPeers"
@@ -722,7 +739,12 @@ docTracers configFileName outputFileName _ = do
             <> txSubmissionNodeTrDoc
             <> txSubmission2TrDoc
 -- Diffusion
-
+            <> dtMuxTrDoc
+            <> dtLocalMuxTrDoc
+            <> dtHandshakeTrDoc
+            <> dtLocalHandshakeTrDoc
+            <> dtDiffusionInitializationTrDoc
+            <> dtLedgerPeersTrDoc
 
     res <- buildersToText bl trConfig
     T.writeFile outputFileName res
