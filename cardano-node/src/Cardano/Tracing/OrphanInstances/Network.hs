@@ -1903,6 +1903,10 @@ instance ToJSON addr => ToJSON (OperationResult addr) where
     Aeson.object [ "kind" .= String "OperationSuccess"
                  , "operationSuccess" .= toJSON addr
                  ]
+  toJSON (TerminatedConnection t) =
+    Aeson.object [ "kind" .= String "TerminatedConnection"
+                 , "terminatedConnection" .= toJSON t
+                 ]
 
 instance ToJSON RemoteSt where
   toJSON = String . pack . show
