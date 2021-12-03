@@ -46,6 +46,23 @@ library
                        Cardano.Tracer.Handlers.Metrics.Prometheus
                        Cardano.Tracer.Handlers.Metrics.Servers
 
+                       Cardano.Tracer.Handlers.RTView.Run
+                       Cardano.Tracer.Handlers.RTView.State.Displayed
+                       Cardano.Tracer.Handlers.RTView.State.TraceObjects
+                       Cardano.Tracer.Handlers.RTView.UI.CSS.Bulma
+                       Cardano.Tracer.Handlers.RTView.UI.CSS.Own
+                       Cardano.Tracer.Handlers.RTView.UI.HTML.NodePanel
+                       --Cardano.Tracer.Handlers.RTView.UI.HTML.Notifications
+                       Cardano.Tracer.Handlers.RTView.UI.HTML.OwnInfo
+                       Cardano.Tracer.Handlers.RTView.UI.HTML.PageBody
+                       Cardano.Tracer.Handlers.RTView.UI.Img.Icons
+                       --Cardano.Tracer.Handlers.RTView.UI.JS.ChartJS
+                       --Cardano.Tracer.Handlers.RTView.UI.JS.Charts
+                       --Cardano.Tracer.Handlers.RTView.UI.JS.Utils
+                       --Cardano.Tracer.Handlers.RTView.UI.Elements
+                       Cardano.Tracer.Handlers.RTView.UI.Updater
+                       Cardano.Tracer.Handlers.RTView.UI.Utils
+
                        Cardano.Tracer.CLI
                        Cardano.Tracer.Configuration
                        Cardano.Tracer.Run
@@ -60,6 +77,7 @@ library
                        , blaze-html
                        , blaze-markup
                        , bytestring
+                       , cardano-config
                        , cborg
                        , containers
                        , contra-tracer
@@ -75,6 +93,7 @@ library
                        , snap-core
                        , snap-server
                        , stm
+                       , string-qq
                        , text
                        , threepenny-gui
                        , time
