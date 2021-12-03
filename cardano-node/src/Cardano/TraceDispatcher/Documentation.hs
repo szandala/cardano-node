@@ -2,21 +2,14 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE PackageImports        #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-
-{-# OPTIONS_GHC -Wno-unused-imports  #-}
-{-# OPTIONS_GHC -Wno-deprecations  #-}
-
 
 module Cardano.TraceDispatcher.Documentation
   ( docTracers
   ) where
 
-import           Codec.CBOR.Read (DeserialiseFailure)
 import           Data.Aeson.Types (ToJSON)
-import           Data.Maybe (fromMaybe)
 import qualified Data.Text.IO as T
 import           Network.Mux (MuxTrace (..), WithMuxBearer (..))
 import qualified Network.Socket as Socket
@@ -32,40 +25,23 @@ import           Cardano.TraceDispatcher.Tracers.ChainDB
 import           Cardano.TraceDispatcher.Tracers.Consensus
 import           Cardano.TraceDispatcher.Tracers.Diffusion
 import           Cardano.TraceDispatcher.Tracers.ForgingThreadStats
-                     (ForgeThreadStats, docForgeStats, forgeThreadStats)
+                     (forgeThreadStats)
 import           Cardano.TraceDispatcher.Tracers.KESInfo
 import           Cardano.TraceDispatcher.Tracers.NodeToClient
 import           Cardano.TraceDispatcher.Tracers.NodeToNode
 import           Cardano.TraceDispatcher.Tracers.NonP2P
 import           Cardano.TraceDispatcher.Tracers.P2P
 import           Cardano.TraceDispatcher.Tracers.Peer
-import           Cardano.TraceDispatcher.Tracers.Resources (namesForResources,
-                     severityResources, startResourceTracer)
 import           Cardano.TraceDispatcher.Tracers.Shutdown
 import           Cardano.TraceDispatcher.Tracers.Startup
-import qualified "trace-dispatcher" Control.Tracer as NT
-import           Trace.Forward.Utils.DataPoint (DataPoint)
 
-import           Cardano.Node.Configuration.Logging (EKGDirect)
 import           Cardano.Node.Handlers.Shutdown (ShutdownTrace)
-import           Cardano.Node.Queries (NodeKernelData)
 import           Cardano.Node.Startup
 import           Cardano.Node.TraceConstraints
-import           Cardano.Node.Tracing
 
-import qualified Cardano.BM.Data.Trace as Old
-import           Cardano.Tracing.Config (TraceOptions (..))
-import           Cardano.Tracing.OrphanInstances.Common (ToObject)
-import           Cardano.Tracing.Tracers
-import           "contra-tracer" Control.Tracer (Tracer (..))
-
-import           Ouroboros.Consensus.Block (ConvertRawHash (..))
-import           Ouroboros.Consensus.Block.Forging
 import           Ouroboros.Consensus.BlockchainTime.WallClock.Util
                      (TraceBlockchainTimeEvent (..))
-import           Ouroboros.Consensus.Byron.Ledger.Block (ByronBlock)
-import           Ouroboros.Consensus.Byron.Ledger.Config (BlockConfig)
-import           Ouroboros.Consensus.Ledger.Inspect (LedgerEvent)
+-- import           Ouroboros.Consensus.Byron.Ledger.Block (ByronBlock)
 import           Ouroboros.Consensus.Ledger.Query (Query)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, GenTx,
                      GenTxId, TxId)
@@ -80,41 +56,47 @@ import           Ouroboros.Consensus.MiniProtocol.ChainSync.Server
                      (TraceChainSyncServerEvent)
 import           Ouroboros.Consensus.MiniProtocol.LocalTxSubmission.Server
                      (TraceLocalTxSubmissionServerEvent (..))
-import qualified Ouroboros.Consensus.Network.NodeToClient as NtC
-import qualified Ouroboros.Consensus.Network.NodeToNode as NtN
-import           Ouroboros.Consensus.Node (NetworkP2PMode (..))
 import qualified Ouroboros.Consensus.Node.Run as Consensus
 import qualified Ouroboros.Consensus.Node.Tracers as Consensus
 import           Ouroboros.Consensus.Shelley.Ledger.Block
 import qualified Ouroboros.Consensus.Shelley.Protocol.HotKey as HotKey
 import qualified Ouroboros.Consensus.Storage.ChainDB as ChainDB
-import qualified Ouroboros.Consensus.Storage.LedgerDB.OnDisk as LedgerDB
-import           Ouroboros.Consensus.Storage.Serialisation (SerialisedHeader)
 
-import           Ouroboros.Network.Block (Point (..), Serialised, Tip)
+import           Ouroboros.Network.Block (Point (..), Tip)
 import qualified Ouroboros.Network.BlockFetch.ClientState as BlockFetch
 import           Ouroboros.Network.BlockFetch.Decision
+import           Ouroboros.Network.ConnectionHandler
+                     (ConnectionHandlerTrace (..))
 import           Ouroboros.Network.ConnectionId (ConnectionId)
+import           Ouroboros.Network.ConnectionManager.Types
+                     (ConnectionManagerTrace (..))
 import qualified Ouroboros.Network.Diffusion as Diffusion
-import qualified Ouroboros.Network.Diffusion.NonP2P as NonP2P
-import qualified Ouroboros.Network.Diffusion.P2P as P2P
 import           Ouroboros.Network.Driver.Simple (TraceSendRecv)
+import           Ouroboros.Network.InboundGovernor (InboundGovernorTrace)
 import           Ouroboros.Network.KeepAlive (TraceKeepAliveClient (..))
-import           Ouroboros.Network.NodeToClient (LocalAddress,
-                     NodeToClientVersion)
 import qualified Ouroboros.Network.NodeToClient as NtC
 import           Ouroboros.Network.NodeToNode (ErrorPolicyTrace (..),
-                     HandshakeTr, NodeToNodeVersion, RemoteAddress,
-                     WithAddr (..))
+                     RemoteAddress, WithAddr (..))
 import qualified Ouroboros.Network.NodeToNode as NtN
+import           Ouroboros.Network.PeerSelection.Governor
+                     (DebugPeerSelection (..), PeerSelectionCounters (..),
+                     TracePeerSelection (..))
 import           Ouroboros.Network.PeerSelection.LedgerPeers (TraceLedgerPeers)
+import           Ouroboros.Network.PeerSelection.PeerStateActions
+                     (PeerSelectionActionsTrace (..))
+import           Ouroboros.Network.PeerSelection.RootPeersDNS
+                     (TraceLocalRootPeers (..), TracePublicRootPeers (..))
 import           Ouroboros.Network.Protocol.BlockFetch.Type (BlockFetch)
 import           Ouroboros.Network.Protocol.ChainSync.Type (ChainSync)
+
+
+
 import           Ouroboros.Network.Protocol.LocalStateQuery.Type
                      (LocalStateQuery)
 import qualified Ouroboros.Network.Protocol.LocalTxSubmission.Type as LTS
 import           Ouroboros.Network.Protocol.TxSubmission.Type (TxSubmission)
 import           Ouroboros.Network.Protocol.TxSubmission2.Type (TxSubmission2)
+import           Ouroboros.Network.Server2 (ServerTrace (..))
 import           Ouroboros.Network.Snocket (LocalAddress (..))
 import           Ouroboros.Network.Subscription.Dns (DnsTrace (..),
                      WithDomainName (..))
@@ -126,10 +108,11 @@ import           Ouroboros.Network.TxSubmission.Outbound
                      (TraceTxSubmissionOutbound)
 
 
+
 -- Have to repeat the construction of the tracers here,
 -- as the tracers are behind old tracer interface after construction in mkDispatchTracers.
 -- Can be changed, when old tracers have gone
-docTracers :: forall blk t peer remotePeer.
+docTracers :: forall blk t peer peerConn remotePeer resolverError ntnVersion ntnVersionData.
   ( Show t
   , forall result. Show (Query blk result)
   , TraceConstraints blk
@@ -139,8 +122,13 @@ docTracers :: forall blk t peer remotePeer.
   , LogFormatting peer
   , LogFormatting remotePeer
   , Show remotePeer
-  , Show (TxId (GenTx blk))
   , Show peer
+  , Show resolverError
+  , Show peerConn
+  , Show ntnVersion
+  , ToJSON ntnVersion
+  , Show ntnVersionData
+  , ToJSON ntnVersionData
   )
   => FilePath
   -> FilePath
@@ -537,7 +525,8 @@ docTracers configFileName outputFileName _ = do
                 allPublic
     configureTracers trConfig docHandshake [dtHandshakeTr]
     dtHandshakeTrDoc <- documentTracer trConfig dtHandshakeTr
-      (docHandshake :: Documented (NtN.HandshakeTr NtN.RemoteAddress NtN.NodeToNodeVersion))
+      (docHandshake ::
+        Documented (NtN.HandshakeTr NtN.RemoteAddress NtN.NodeToNodeVersion))
 
     dtLocalHandshakeTr  <-  mkCardanoTracer
                 trBase trForward mbTrEKG
@@ -547,7 +536,8 @@ docTracers configFileName outputFileName _ = do
                 allPublic
     configureTracers trConfig docLocalHandshake [dtLocalHandshakeTr]
     dtLocalHandshakeTrDoc <- documentTracer trConfig dtLocalHandshakeTr
-      (docLocalHandshake :: Documented (NtC.HandshakeTr LocalAddress NtC.NodeToClientVersion))
+      (docLocalHandshake ::
+        Documented (NtC.HandshakeTr LocalAddress NtC.NodeToClientVersion))
 
     dtDiffusionInitializationTr   <-  mkCardanoTracer
                 trBase trForward mbTrEKG
@@ -557,7 +547,8 @@ docTracers configFileName outputFileName _ = do
                 allPublic
     configureTracers trConfig docDiffusionInit [dtDiffusionInitializationTr]
     dtDiffusionInitializationTrDoc <- documentTracer trConfig dtDiffusionInitializationTr
-      (docDiffusionInit :: Documented (Diffusion.InitializationTracer Socket.SockAddr LocalAddress))
+      (docDiffusionInit ::
+        Documented (Diffusion.InitializationTracer Socket.SockAddr LocalAddress))
 
     dtLedgerPeersTr  <- mkCardanoTracer
                 trBase trForward mbTrEKG
@@ -569,141 +560,210 @@ docTracers configFileName outputFileName _ = do
     dtLedgerPeersTrDoc <- documentTracer trConfig dtLedgerPeersTr
       (docLedgerPeers :: Documented TraceLedgerPeers)
 
--- -- DiffusionTracersExtra P2P
---     localRootPeersTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "LocalRootPeers"
---       namesForLocalRootPeers
---       severityLocalRootPeers
---       allPublic
---     configureTracers trConfig docLocalRootPeers [localRootPeersTr]
---     publicRootPeersTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "PublicRootPeers"
---       namesForPublicRootPeers
---       severityPublicRootPeers
---       allPublic
---     configureTracers trConfig docPublicRootPeers [publicRootPeersTr]
---     peerSelectionTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "PeerSelection"
---       namesForPeerSelection
---       severityPeerSelection
---       allPublic
---     configureTracers trConfig docPeerSelection [peerSelectionTr]
---     debugPeerSelectionTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "DebugPeerSelection"
---       namesForDebugPeerSelection
---       severityDebugPeerSelection
---       allPublic
---     configureTracers trConfig docDebugPeerSelection [debugPeerSelectionTr]
---     debugPeerSelectionResponderTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "DebugPeerSelectionResponder"
---       namesForDebugPeerSelection
---       severityDebugPeerSelection
---       allPublic
---     configureTracers trConfig docDebugPeerSelection [debugPeerSelectionResponderTr]
---     peerSelectionCountersTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "PeerSelectionCounters"
---       namesForPeerSelectionCounters
---       severityPeerSelectionCounters
---       allPublic
---     configureTracers trConfig docPeerSelectionCounters [peerSelectionCountersTr]
---     peerSelectionActionsTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "PeerSelectionActions"
---       namesForPeerSelectionActions
---       severityPeerSelectionActions
---       allPublic
---     configureTracers trConfig docPeerSelectionActions [peerSelectionActionsTr]
---     connectionManagerTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "ConnectionManager"
---       namesForConnectionManager
---       severityConnectionManager
---       allPublic
---     configureTracers trConfig docConnectionManager [connectionManagerTr]
---     serverTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "Server"
---       namesForServer
---       severityServer
---       allPublic
---     configureTracers trConfig docServer [serverTr]
---     inboundGovernorTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "InboundGovernor"
---       namesForInboundGovernor
---       severityInboundGovernor
---       allPublic
---     configureTracers trConfig docInboundGovernor [inboundGovernorTr]
---     localConnectionManagerTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "LocalConnectionManager"
---       namesForConnectionManager
---       severityConnectionManager
---       allPublic
---     configureTracers trConfig docConnectionManager [localConnectionManagerTr]
---     localServerTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "LocalServer"
---       namesForServer
---       severityServer
---       allPublic
---     configureTracers trConfig docServer [localServerTr]
---     localInboundGovernorTr  <-  mkCardanoTracer
---       trBase trForward mbTrEKG
---       "LocalInboundGovernor"
---       namesForInboundGovernor
---       severityInboundGovernor
---       allPublic
---     configureTracers trConfig docInboundGovernor [localInboundGovernorTr]
--- -- DiffusionTracersExtra nonP2P
---     dtIpSubscriptionTr   <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "IpSubscription"
---                 namesForIPSubscription
---                 severityIPSubscription
---                 allPublic
---     configureTracers trConfig docIPSubscription [dtIpSubscriptionTr]
---     dtDnsSubscriptionTr  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "DNSSubscription"
---                 namesForDNSSubscription
---                 severityDNSSubscription
---                 allPublic
---     configureTracers trConfig docDNSSubscription [dtDnsSubscriptionTr]
---     dtDnsResolverTr  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "DNSResolver"
---                 namesForDNSResolver
---                 severityDNSResolver
---                 allPublic
---     configureTracers trConfig docDNSResolver [dtDnsResolverTr]
---     dtErrorPolicyTr  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "ErrorPolicy"
---                 namesForErrorPolicy
---                 severityErrorPolicy
---                 allPublic
---     configureTracers trConfig docErrorPolicy [dtErrorPolicyTr]
---     dtLocalErrorPolicyTr <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "LocalErrorPolicy"
---                 namesForLocalErrorPolicy
---                 severityLocalErrorPolicy
---                 allPublic
---     configureTracers trConfig docLocalErrorPolicy [dtLocalErrorPolicyTr]
---     dtAcceptPolicyTr    <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 "AcceptPolicy"
---                 namesForAcceptPolicy
---                 severityAcceptPolicy
---                 allPublic
---     configureTracers trConfig docAcceptPolicy [dtAcceptPolicyTr]
+-- DiffusionTracersExtra P2P
+    localRootPeersTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "LocalRootPeers"
+      namesForLocalRootPeers
+      severityLocalRootPeers
+      allPublic
+    configureTracers trConfig docLocalRootPeers [localRootPeersTr]
+    localRootPeersTrDoc <- documentTracer trConfig localRootPeersTr
+      (docLocalRootPeers :: Documented (TraceLocalRootPeers RemoteAddress resolverError))
+
+    publicRootPeersTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "PublicRootPeers"
+      namesForPublicRootPeers
+      severityPublicRootPeers
+      allPublic
+    configureTracers trConfig docPublicRootPeers [publicRootPeersTr]
+    publicRootPeersTrDoc <- documentTracer trConfig publicRootPeersTr
+      (docPublicRootPeers :: Documented TracePublicRootPeers)
+
+    peerSelectionTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "PeerSelection"
+      namesForPeerSelection
+      severityPeerSelection
+      allPublic
+    configureTracers trConfig docPeerSelection [peerSelectionTr]
+    peerSelectionTrDoc <- documentTracer trConfig peerSelectionTr
+      (docPeerSelection :: Documented (TracePeerSelection Socket.SockAddr))
+
+    debugPeerSelectionTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "DebugPeerSelection"
+      namesForDebugPeerSelection
+      severityDebugPeerSelection
+      allPublic
+    configureTracers trConfig docDebugPeerSelection [debugPeerSelectionTr]
+    debugPeerSelectionTrDoc <- documentTracer trConfig debugPeerSelectionTr
+      (docDebugPeerSelection :: Documented (DebugPeerSelection Socket.SockAddr peerConn))
+
+    debugPeerSelectionResponderTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "DebugPeerSelectionResponder"
+      namesForDebugPeerSelection
+      severityDebugPeerSelection
+      allPublic
+    configureTracers trConfig docDebugPeerSelection [debugPeerSelectionResponderTr]
+    debugPeerSelectionResponderTrDoc <- documentTracer trConfig debugPeerSelectionResponderTr
+      (docDebugPeerSelection :: Documented (DebugPeerSelection Socket.SockAddr peerConn))
+
+    peerSelectionCountersTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "PeerSelectionCounters"
+      namesForPeerSelectionCounters
+      severityPeerSelectionCounters
+      allPublic
+    configureTracers trConfig docPeerSelectionCounters [peerSelectionCountersTr]
+    peerSelectionCountersTrDoc <- documentTracer trConfig peerSelectionCountersTr
+      (docPeerSelectionCounters :: Documented PeerSelectionCounters)
+
+    peerSelectionActionsTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "PeerSelectionActions"
+      namesForPeerSelectionActions
+      severityPeerSelectionActions
+      allPublic
+    configureTracers trConfig docPeerSelectionActions [peerSelectionActionsTr]
+    peerSelectionActionsTrDoc <- documentTracer trConfig peerSelectionActionsTr
+      (docPeerSelectionActions ::
+        Documented (PeerSelectionActionsTrace Socket.SockAddr))
+
+    connectionManagerTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "ConnectionManager"
+      namesForConnectionManager
+      severityConnectionManager
+      allPublic
+    configureTracers trConfig docConnectionManager [connectionManagerTr]
+    connectionManagerTrDoc <- documentTracer trConfig connectionManagerTr
+      (docConnectionManager :: Documented
+        (ConnectionManagerTrace
+          Socket.SockAddr
+          (ConnectionHandlerTrace ntnVersion ntnVersionData)))
+
+    serverTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "Server"
+      namesForServer
+      severityServer
+      allPublic
+    configureTracers trConfig docServer [serverTr]
+    serverTrDoc <- documentTracer trConfig serverTr
+      (docServer :: Documented (ServerTrace Socket.SockAddr))
+
+    inboundGovernorTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "InboundGovernor"
+      namesForInboundGovernor
+      severityInboundGovernor
+      allPublic
+    configureTracers trConfig docInboundGovernor [inboundGovernorTr]
+    inboundGovernorTrDoc <- documentTracer trConfig inboundGovernorTr
+      (docInboundGovernor :: Documented (InboundGovernorTrace Socket.SockAddr))
+
+    localConnectionManagerTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "LocalConnectionManager"
+      namesForConnectionManager
+      severityConnectionManager
+      allPublic
+    configureTracers trConfig docConnectionManager [localConnectionManagerTr]
+    localConnectionManagerTrDoc <- documentTracer trConfig localConnectionManagerTr
+      (docConnectionManager :: Documented
+        (ConnectionManagerTrace
+          Socket.SockAddr
+          (ConnectionHandlerTrace
+            ntnVersion
+            ntnVersionData)))
+
+    localServerTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "LocalServer"
+      namesForServer
+      severityServer
+      allPublic
+    configureTracers trConfig docServer [localServerTr]
+    localServerTrDoc <- documentTracer trConfig localServerTr
+      (docServer :: Documented (ServerTrace Socket.SockAddr))
+
+
+    localInboundGovernorTr  <-  mkCardanoTracer
+      trBase trForward mbTrEKG
+      "LocalInboundGovernor"
+      namesForInboundGovernor
+      severityInboundGovernor
+      allPublic
+    configureTracers trConfig docInboundGovernor [localInboundGovernorTr]
+    localInboundGovernorTrDoc <- documentTracer trConfig localInboundGovernorTr
+      (docInboundGovernor :: Documented (InboundGovernorTrace Socket.SockAddr))
+
+-- DiffusionTracersExtra nonP2P
+
+    dtIpSubscriptionTr   <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "IpSubscription"
+                namesForIPSubscription
+                severityIPSubscription
+                allPublic
+    configureTracers trConfig docIPSubscription [dtIpSubscriptionTr]
+    dtIpSubscriptionTrDoc <- documentTracer trConfig dtIpSubscriptionTr
+      (docIPSubscription ::
+        Documented (WithIPList (SubscriptionTrace Socket.SockAddr)))
+
+    dtDnsSubscriptionTr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "DNSSubscription"
+                namesForDNSSubscription
+                severityDNSSubscription
+                allPublic
+    configureTracers trConfig docDNSSubscription [dtDnsSubscriptionTr]
+    dtDnsSubscriptionTrDoc <- documentTracer trConfig dtDnsSubscriptionTr
+      (docDNSSubscription ::
+        Documented (WithDomainName (SubscriptionTrace Socket.SockAddr)))
+
+    dtDnsResolverTr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "DNSResolver"
+                namesForDNSResolver
+                severityDNSResolver
+                allPublic
+    configureTracers trConfig docDNSResolver [dtDnsResolverTr]
+    dtDnsResolverTrDoc <- documentTracer trConfig dtDnsResolverTr
+      (docDNSResolver :: Documented (WithDomainName DnsTrace))
+
+    dtErrorPolicyTr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "ErrorPolicy"
+                namesForErrorPolicy
+                severityErrorPolicy
+                allPublic
+    configureTracers trConfig docErrorPolicy [dtErrorPolicyTr]
+    dtErrorPolicyTrDoc <- documentTracer trConfig dtErrorPolicyTr
+      (docErrorPolicy :: Documented (WithAddr Socket.SockAddr ErrorPolicyTrace))
+
+    dtLocalErrorPolicyTr <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "LocalErrorPolicy"
+                namesForLocalErrorPolicy
+                severityLocalErrorPolicy
+                allPublic
+    configureTracers trConfig docLocalErrorPolicy [dtLocalErrorPolicyTr]
+    dtLocalErrorPolicyTrDoc <- documentTracer trConfig dtLocalErrorPolicyTr
+      (docLocalErrorPolicy :: Documented (WithAddr LocalAddress ErrorPolicyTrace))
+
+    dtAcceptPolicyTr    <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                "AcceptPolicy"
+                namesForAcceptPolicy
+                severityAcceptPolicy
+                allPublic
+    configureTracers trConfig docAcceptPolicy [dtAcceptPolicyTr]
+    dtAcceptPolicyTrDoc <- documentTracer trConfig dtAcceptPolicyTr
+      (docAcceptPolicy :: Documented NtN.AcceptConnectionsPolicyTrace)
 
     let bl =  nodeInfoTrDoc
             <> resourcesTrDoc
@@ -745,194 +805,28 @@ docTracers configFileName outputFileName _ = do
             <> dtLocalHandshakeTrDoc
             <> dtDiffusionInitializationTrDoc
             <> dtLedgerPeersTrDoc
+-- DiffusionTracersExtra P2P
+            <> localRootPeersTrDoc
+            <> publicRootPeersTrDoc
+            <> peerSelectionTrDoc
+            <> debugPeerSelectionTrDoc
+            <> debugPeerSelectionResponderTrDoc
+            <> peerSelectionCountersTrDoc
+            <> peerSelectionActionsTrDoc
+            <> connectionManagerTrDoc
+            <> serverTrDoc
+            <> inboundGovernorTrDoc
+            <> localConnectionManagerTrDoc
+            <> localServerTrDoc
+            <> localInboundGovernorTrDoc
+-- DiffusionTracersExtra nonP2P
+            <> dtIpSubscriptionTrDoc
+            <> dtDnsSubscriptionTrDoc
+            <> dtDnsResolverTrDoc
+            <> dtErrorPolicyTrDoc
+            <> dtLocalErrorPolicyTrDoc
+            <> dtAcceptPolicyTrDoc
 
     res <- buildersToText bl trConfig
     T.writeFile outputFileName res
     pure ()
-
--- -- ChainDB
---     cdbmTrDoc <- documentTracer trConfig cdbmTr
---       (docChainDBTraceEvent :: Documented (ChainDB.TraceEvent blk))
---
--- -- Consensus
---     cscTrDoc <- documentTracer trConfig cscTr
---         (docChainSyncClientEvent  :: Documented
---           (BlockFetch.TraceLabelPeer Peer
---             (TraceChainSyncClientEvent blk)))
---     csshTrDoc <- documentTracer trConfig csshTr
---         (docChainSyncServerEvent  :: Documented
---           (TraceChainSyncServerEvent blk))
---     cssbTrDoc <- documentTracer trConfig cssbTr
---         (docChainSyncServerEvent  :: Documented
---           (TraceChainSyncServerEvent blk))
---     bfdTrDoc <- documentTracer trConfig bfdTr
---         (docBlockFetchDecision :: Documented
---            [BlockFetch.TraceLabelPeer Peer
---              (FetchDecision [Point (Header blk)])])
---     bfcTrDoc <- documentTracer trConfig bfcTr
---         (docBlockFetchClient :: Documented
---           (BlockFetch.TraceLabelPeer Peer
---             (BlockFetch.TraceFetchClientState (Header blk))))
---     bfsTrDoc <- documentTracer trConfig bfsTr
---         (docBlockFetchServer :: Documented
---           (TraceBlockFetchServerEvent blk))
---     fsiTrDoc <- documentTracer trConfig fsiTr
---         (docForgeStateInfo :: Documented
---            (Consensus.TraceLabelCreds HotKey.KESInfo))
---     txiTrDoc <- documentTracer trConfig txiTr
---         (docTxInbound :: Documented
---            (BlockFetch.TraceLabelPeer Peer
---              (TraceTxSubmissionInbound (GenTxId blk) (GenTx blk))))
---     txoTrDoc <- documentTracer trConfig txoTr
---         (docTxOutbound :: Documented
---           (BlockFetch.TraceLabelPeer Peer
---             (TraceTxSubmissionOutbound (GenTxId blk) (GenTx blk))))
---     ltxsTrDoc <- documentTracer trConfig ltxsTr
---         (docLocalTxSubmissionServer :: Documented
---           (TraceLocalTxSubmissionServerEvent blk))
---     mpTrDoc <- documentTracer trConfig mpTr
---         (docMempool :: Documented
---           (TraceEventMempool blk))
---     fTrDoc <- documentTracer trConfig fTr
---         (docForge :: Documented
---           (ForgeTracerType blk))
---     -- fSttTrDoc <- documentTracer trConfig fSttTr TODO JNF
---     --     (docForgeStats :: Documented
---     --       ForgeThreadStats)
---     btTrDoc <- documentTracer trConfig btTr
---         (docBlockchainTime :: Documented
---           (TraceBlockchainTimeEvent t))
---     kacTrDoc <- documentTracer trConfig kacTr
---         (docKeepAliveClient :: Documented
---           (TraceKeepAliveClient Peer))
---
---     tcsTrDoc <- documentTracer trConfig tcsTr
---         (docTChainSync :: Documented
---           (BlockFetch.TraceLabelPeer Peer
---             (TraceSendRecv
---               (ChainSync (Serialised blk) (Point blk) (Tip blk)))))
---     ttsTrDoc <- documentTracer trConfig ttsTr
---         (docTTxSubmission :: Documented
---            (BlockFetch.TraceLabelPeer
---               Peer
---               (TraceSendRecv
---                  (LTS.LocalTxSubmission
---                     (GenTx blk) (ApplyTxErr blk)))))
---     tsqTrDoc <- documentTracer trConfig tsqTr
---         (docTStateQuery :: Documented
---            (BlockFetch.TraceLabelPeer Peer
---             (TraceSendRecv
---               (LocalStateQuery blk (Point blk) (Query blk)))))
---     tcsnTrDoc <- documentTracer trConfig tcsnTr
---         (docTChainSync :: Documented
---           (BlockFetch.TraceLabelPeer Peer
---             (TraceSendRecv
---               (ChainSync (Header blk) (Point blk) (Tip blk)))))
---     tcssTrDoc <- documentTracer trConfig tcssTr
---         (docTChainSync :: Documented
---           (BlockFetch.TraceLabelPeer Peer
---             (TraceSendRecv
---               (ChainSync (SerialisedHeader blk) (Point blk) (Tip blk)))))
---     tbfTrDoc <- documentTracer trConfig tbfTr
---         (docTBlockFetch :: Documented
---           (BlockFetch.TraceLabelPeer Peer
---             (TraceSendRecv
---               (BlockFetch blk (Point blk)))))
---     tbfsTrDoc <- documentTracer trConfig tbfsTr
---         (docTBlockFetch :: Documented
---           (BlockFetch.TraceLabelPeer Peer
---             (TraceSendRecv
---               (BlockFetch (Serialised blk) (Point blk)))))
---     tsnTrDoc <- documentTracer trConfig tsnTr
---         (docTTxSubmissionNode :: Documented
---           (BlockFetch.TraceLabelPeer Peer
---             (TraceSendRecv
---               (TxSubmission (GenTxId blk) (GenTx blk)))))
---     ts2nTrDoc <- documentTracer trConfig ts2nTr
---         (docTTxSubmission2Node :: Documented
---           (BlockFetch.TraceLabelPeer Peer
---             (TraceSendRecv
---               (TxSubmission2 (GenTxId blk) (GenTx blk)))))
---     ipsTrDoc <- documentTracer trConfig ipsTr
---         (docIPSubscription :: Documented
---           (WithIPList (SubscriptionTrace Socket.SockAddr)))
---     dnssTrDoc <- documentTracer trConfig dnssTr
---         (docDNSSubscription :: Documented
---           (WithDomainName (SubscriptionTrace Socket.SockAddr)))
---     dnsrTrDoc <- documentTracer trConfig dnsrTr
---         (docDNSResolver :: Documented (WithDomainName DnsTrace))
---     errpTrDoc <- documentTracer trConfig errpTr
---         (docErrorPolicy :: Documented
---           (WithAddr Socket.SockAddr ErrorPolicyTrace))
---     lerrpTrDoc <- documentTracer trConfig lerrpTr
---         (docLocalErrorPolicy :: Documented
---           (WithAddr LocalAddress ErrorPolicyTrace))
---     apTrDoc <- documentTracer trConfig apTr
---         (docAcceptPolicy :: Documented
---           NtN.AcceptConnectionsPolicyTrace)
---     muxTrDoc <- documentTracer trConfig muxTr
---         (docMux :: Documented
---           (WithMuxBearer Peer MuxTrace))
---     muxLTrDoc <- documentTracer trConfig muxLTr
---         (docMux :: Documented
---           (WithMuxBearer Peer MuxTrace))
---     hsTrDoc <- documentTracer trConfig hsTr
---         (docHandshake :: Documented NtN.HandshakeTr)
---     lhsTrDoc <- documentTracer trConfig lhsTr
---         (docLocalHandshake :: Documented NtC.HandshakeTr)
---     diTrDoc <- documentTracer trConfig diTr
---         (docDiffusionInit :: Documented ND.DiffusionInitializationTracer)
---
---     rsTrDoc <- documentTracer trConfig rsTr
---         (docResourceStats :: Documented ResourceStats)
---     biTrDoc <- documentTracer trConfig biTr
---         (docBasicInfo :: Documented BasicInfo)
---     pTrDoc <- documentTracer trConfig pTr
---         (docPeers :: Documented [PeerT blk])
---
---     let bl = niTrDoc
---             ++ cdbmTrDoc
---             ++ cscTrDoc
---             ++ csshTrDoc
---             ++ cssbTrDoc
---             ++ bfdTrDoc
---             ++ bfcTrDoc
---             ++ bfsTrDoc
---             ++ fsiTrDoc
---             ++ txiTrDoc
---             ++ txoTrDoc
---             ++ ltxsTrDoc
---             ++ mpTrDoc
---             ++ fTrDoc
---             -- ++ fSttTrDoc
---             ++ btTrDoc
---             ++ kacTrDoc
---
---             ++ tcsTrDoc
---             ++ ttsTrDoc
---             ++ tsqTrDoc
---             ++ tcsnTrDoc
---             ++ tcssTrDoc
---             ++ tbfTrDoc
---             ++ tbfsTrDoc
---             ++ tsnTrDoc
---             ++ ts2nTrDoc
---             ++ ipsTrDoc
---             ++ dnssTrDoc
---             ++ dnsrTrDoc
---             ++ errpTrDoc
---             ++ lerrpTrDoc
---             ++ apTrDoc
---             ++ muxTrDoc
---             ++ muxLTrDoc
---             ++ hsTrDoc
---             ++ lhsTrDoc
---             ++ diTrDoc
---
---             ++ rsTrDoc
---             ++ biTrDoc
---             ++ pTrDoc
---
---     res <- buildersToText bl trConfig
---     T.writeFile outputFileName res
---     pure ()
