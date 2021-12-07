@@ -245,7 +245,6 @@ module Cardano.Api (
     -- ** Script execution units
     evaluateTransactionExecutionUnits,
     ScriptExecutionError(..),
-    TransactionValidityIntervalError(..),
 
     -- ** Transaction balance
     evaluateTransactionBalance,
@@ -497,12 +496,6 @@ module Cardano.Api (
     applyBlock,
     ValidationMode(..),
 
-    -- *** Ledger Events
-    LedgerEvent(..),
-    MIRDistributionDetails(..),
-    PoolReapDetails(..),
-    toLedgerEvent,
-
     -- *** Traversing the block chain
     foldBlocks,
     chainSyncClientWithLedgerState,
@@ -646,7 +639,6 @@ import           Cardano.Api.Key
 import           Cardano.Api.KeysByron
 import           Cardano.Api.KeysPraos
 import           Cardano.Api.KeysShelley
-import           Cardano.Api.LedgerEvent
 import           Cardano.Api.LedgerState
 import           Cardano.Api.Modes
 import           Cardano.Api.NetworkId
