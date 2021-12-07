@@ -281,8 +281,8 @@ newtype SerialisedDebugLedgerState era
 data DebugLedgerState era where
   DebugLedgerState :: ShelleyLedgerEra era ~ ledgerera => Shelley.NewEpochState ledgerera -> DebugLedgerState era
 
-instance (Typeable era, Shelley.TransLedgerState FromCBOR (ShelleyLedgerEra era)) => FromCBOR (DebugLedgerState era) where
-  fromCBOR = DebugLedgerState <$> (fromCBOR :: Decoder s (Shelley.NewEpochState (ShelleyLedgerEra era)))
+instance (Typeable era, Shelley.TransLedgerState FromCBOR (ShelleyLedgerEra era), Shelley.ShelleyBasedEra era) => FromCBOR (DebugLedgerState era) where
+  fromCBOR = DebugLedgerState <$> undefined
 
 -- TODO: Shelley based era class!
 instance ( IsShelleyBasedEra era

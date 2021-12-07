@@ -117,6 +117,7 @@ library
                       , cborg
                       , contra-tracer
                       , containers
+                      , compact-map
                       , cryptonite
                       , deepseq
                       , directory
