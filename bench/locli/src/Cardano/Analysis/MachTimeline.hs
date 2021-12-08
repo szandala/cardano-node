@@ -10,7 +10,7 @@
 {- HLINT ignore "Use head" -}
 module Cardano.Analysis.MachTimeline (module Cardano.Analysis.MachTimeline) where
 
-import Prelude (String, (!!), error, head, last)
+import Prelude (String, (!!), head, last)
 import Cardano.Prelude hiding (head)
 
 import Control.Arrow ((&&&), (***))
@@ -212,11 +212,9 @@ timelineStep ci a@TimelineAccum{aSlotStats=cur:rSLs, ..} = \case
     then a { aSlotStats = cur
              { slOrderViol = slOrderViol cur + 1 }
              : -- Limited back-patching:
-             case (slSlot cur - slot, rSLs) of
-               (1, p1:rest)       ->       onLeadershipCheck loAt p1:rest
-               (2, p1:p2:rest)    ->    p1:onLeadershipCheck loAt p2:rest
-               (x, _) ->
-                 error $ "timelineStep:  backpatching at depth " <> show x
+             mapNth (onLeadershipCheck loAt)
+                    (fromIntegral . unSlotNo $ slSlot cur - slot - 1)
+                    rSLs
            }
          -- L-shipCheck for a further-than-immediate future slot
     else let gap = unSlotNo $ slot - slSlot cur - 1
@@ -225,6 +223,11 @@ timelineStep ci a@TimelineAccum{aSlotStats=cur:rSLs, ..} = \case
            -- We have a slot check gap to patch:
            patchSlotCheckGap gap gapStartSlot a
    where
+     mapNth :: (a -> a) -> Int -> [a] -> [a]
+     mapNth f n xs =
+       let (pre, x:post) = splitAt n xs
+       in pre <> (f x : post)
+
      patchSlotCheckGap :: Word64 -> SlotNo -> TimelineAccum -> TimelineAccum
      patchSlotCheckGap gap slot a'@TimelineAccum{aSlotStats=cur':_} =
        case gap of
