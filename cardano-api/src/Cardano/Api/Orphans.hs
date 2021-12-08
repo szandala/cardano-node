@@ -21,6 +21,7 @@ import           Data.Aeson (FromJSON (..), ToJSON (..), object, (.!=), (.:), (.
 import qualified Data.Aeson as Aeson
 import           Data.Aeson.Types (FromJSONKey (..), ToJSONKey (..), toJSONKeyText)
 import qualified Data.ByteString.Base16 as B16
+import qualified Data.Compact.VMap as VMap
 import qualified Data.Map.Strict as Map
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -28,7 +29,7 @@ import qualified Data.Text.Encoding as Text
 import           Data.Word (Word64)
 
 import           Control.Applicative
-import           Control.Iterate.SetAlgebra (BiMap (..), Bimap)
+import           Control.Iterate.BiMap (BiMap (..), Bimap)
 
 import           Cardano.Api.Json
 import           Cardano.Ledger.BaseTypes (StrictMaybe (..), strictMaybeToMaybe)
@@ -98,6 +99,9 @@ instance ( Consensus.ShelleyBasedEra era
          , ToJSON (Core.TxOut era)
          , ToJSON (Core.PParams era)
          , ToJSON (Core.PParamsDelta era)
+         , ToJSON (VMap.VMap VMap.VB VMap.VB (Shelley.Credential 'Shelley.Staking   (Ledger.Crypto era)) (Shelley.KeyHash 'Shelley.StakePool (Ledger.Crypto era)) )
+         , ToJSON (VMap.VMap VMap.VB VMap.VB (Shelley.KeyHash    'Shelley.StakePool (Ledger.Crypto era)) (Shelley.PoolParams (Ledger.Crypto era)))
+         , ToJSON (VMap.VMap VMap.VB VMap.VP (Shelley.Credential 'Shelley.Staking   (Ledger.Crypto era)) (Shelley.CompactForm Shelley.Coin))
          ) => ToJSON (Shelley.EpochState era) where
   toJSON eState = object [ "esAccountState" .= Shelley.esAccountState eState
                          , "esSnapshots" .= Shelley.esSnapshots eState
@@ -232,7 +236,7 @@ instance Crypto.Crypto crypto => ToJSON (Shelley.TxIn crypto) where
 instance Crypto.Crypto crypto => ToJSONKey (Shelley.TxIn crypto) where
   toJSONKey = toJSONKeyText txInToText
 
-txInToText :: Crypto.Crypto crypto => Shelley.TxIn crypto -> Text
+txInToText :: Shelley.TxIn crypto -> Text
 txInToText (Shelley.TxIn (Shelley.TxId txidHash) ix) =
   hashToText (SafeHash.extractHash txidHash)
     <> Text.pack "#"
@@ -250,20 +254,33 @@ instance ToJSON Shelley.Likelihood where
   toJSON (Shelley.Likelihood llhd) =
     toJSON $ fmap (\(Shelley.LogWeight f) -> exp $ realToFrac f :: Double) llhd
 
-instance Crypto.Crypto crypto => ToJSON (Shelley.SnapShots crypto) where
+instance
+  ( Crypto.Crypto crypto
+  , ToJSON (VMap.VMap VMap.VB VMap.VB (Shelley.Credential 'Shelley.Staking   crypto) (Shelley.KeyHash 'Shelley.StakePool crypto))
+  , ToJSON (VMap.VMap VMap.VB VMap.VB (Shelley.KeyHash    'Shelley.StakePool crypto) (Shelley.PoolParams crypto))
+  , ToJSON (VMap.VMap VMap.VB VMap.VP (Shelley.Credential 'Shelley.Staking   crypto) (Shelley.CompactForm Shelley.Coin))
+  ) => ToJSON (Shelley.SnapShots crypto) where
   toJSON ss = object [ "pstakeMark" .= Shelley._pstakeMark ss
                      , "pstakeSet" .= Shelley._pstakeSet ss
                      , "pstakeGo" .= Shelley._pstakeGo ss
                      , "feeSS" .= Shelley._feeSS ss
                      ]
 
-instance Crypto.Crypto crypto => ToJSON (Shelley.SnapShot crypto) where
+instance
+    ( Crypto.Crypto crypto
+    , ToJSON (VMap.VMap VMap.VB VMap.VB (Shelley.Credential 'Shelley.Staking   crypto) (Shelley.KeyHash 'Shelley.StakePool crypto))
+    , ToJSON (VMap.VMap VMap.VB VMap.VB (Shelley.KeyHash    'Shelley.StakePool crypto) (Shelley.PoolParams crypto))
+    , ToJSON (VMap.VMap VMap.VB VMap.VP (Shelley.Credential 'Shelley.Staking   crypto) (Shelley.CompactForm Shelley.Coin))
+    ) => ToJSON (Shelley.SnapShot crypto) where
   toJSON ss = object [ "stake" .= Shelley._stake ss
                      , "delegations" .= ShelleyEpoch._delegations ss
                      , "poolParams" .= Shelley._poolParams ss
                      ]
 
-instance Crypto.Crypto crypto => ToJSON (Shelley.Stake crypto) where
+instance
+    ( Crypto.Crypto crypto
+    , ToJSON (VMap.VMap VMap.VB VMap.VP (Shelley.Credential 'Shelley.Staking crypto) (Shelley.CompactForm Shelley.Coin))
+    ) => ToJSON (Shelley.Stake crypto) where
   toJSON (Shelley.Stake s) = toJSON s
 
 instance Crypto.Crypto crypto => ToJSON (Shelley.RewardUpdate crypto) where

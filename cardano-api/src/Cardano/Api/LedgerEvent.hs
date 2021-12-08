@@ -45,7 +45,7 @@ import           Ouroboros.Consensus.TypeFamilyWrappers
 import           Cardano.Ledger.Shelley.API (InstantaneousRewards (InstantaneousRewards))
 import           Cardano.Ledger.Shelley.Rules.Epoch (EpochEvent (PoolReapEvent))
 import           Cardano.Ledger.Shelley.Rules.Mir (MirEvent (..))
-import           Cardano.Ledger.Shelley.Rules.NewEpoch (NewEpochEvent (EpochEvent, MirEvent, SumRewards))
+import           Cardano.Ledger.Shelley.Rules.NewEpoch (NewEpochEvent (EpochEvent, MirEvent, RewardEvent))
 import           Cardano.Ledger.Shelley.Rules.PoolReap (PoolreapEvent (RetiredPools))
 import           Cardano.Ledger.Shelley.Rules.Tick (TickEvent (NewEpochEvent))
 
@@ -134,7 +134,7 @@ pattern LESumRewards ::
   AuxLedgerEvent (LedgerState (ShelleyBlock ledgerera))
 pattern LESumRewards e m <-
   ShelleyLedgerEventTICK
-    (NewEpochEvent (SumRewards e (convertSumRewardsMap -> m)))
+    (NewEpochEvent (RewardEvent e (convertSumRewardsMap -> m)))
 
 pattern LEMirTransfer ::
   ( Crypto ledgerera ~ StandardCrypto,

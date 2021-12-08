@@ -883,7 +883,7 @@ queryResult eAcq =
 obtainLedgerEraClassConstraints
   :: ShelleyLedgerEra era ~ ledgerera
   => ShelleyBasedEra era
-  -> ((Ledger.ShelleyBased ledgerera
+  -> (( Ledger.UsesValue ledgerera
       , ToJSON (DebugLedgerState era)
       , FromCBOR (DebugLedgerState era)
       , Era.Crypto ledgerera ~ StandardCrypto
